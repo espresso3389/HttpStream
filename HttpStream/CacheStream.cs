@@ -3,9 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Diagnostics;
 
 namespace HttpStream
 {
+    /// <summary>
+    /// A <see cref="Stream"/> implementation, which provides caching mechanism for slow streams.
+    /// </summary>
     public abstract class CacheStream : Stream
     {
         public CacheStream(Stream cacheStream, bool ownStream)
@@ -85,20 +89,34 @@ namespace HttpStream
 
         public override bool CanWrite { get { return false; } }
 
-        public override long Length { get { return GetStreamLengthOrFail(long.MaxValue); } }
+        public override long Length { get { return GetStreamLengthOrDefault(long.MaxValue); } }
 
         public override long Position { get; set; }
 
         #endregion
 
-        public abstract long GetStreamLengthOrFail(long defValue);
+        /// <summary>
+        /// Get the length of the stream.
+        /// </summary>
+        /// <param name="defValue">The value to be returned if the actual length is not available.</param>
+        /// <returns>The length of the stream.</returns>
+        public abstract long GetStreamLengthOrDefault(long defValue);
 
-        public abstract Task<Range> LoadAsync(Stream stream, long pos, int size, CancellationToken cancellationToken);
+        /// <summary>
+        /// Load a portion of file and write to a stream.
+        /// </summary>
+        /// <param name="stream">Stream to write on.</param>
+        /// <param name="rangeToLoad">Byte range in the file to load.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The byte range actually loaded. It may be larger than the requested range.</returns>
+        public abstract Task<Range> LoadAsync(Stream stream, Range rangeToLoad, CancellationToken cancellationToken);
 
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             if (count == 0)
                 return 0;
+
+            //Debug.WriteLine(string.Format("Read: Position={0}, Size={1}", Position, count));
 
             var end = Position + count;
 
@@ -122,10 +140,10 @@ namespace HttpStream
             {
                 if (idx == _ranges.Count)
                 {
-                    var r = await LoadAsync(_cacheStream, Position, allBytes2Read, cancellationToken);
+                    var r = await LoadAsync(_cacheStream, new Range(Position, allBytes2Read), cancellationToken);
                     updateRenges(firstRange, r);
                     if (!r.Contains(Position))
-                        return (int)bytesRead;
+                        return bytesRead;
 
                     var bytesRemain = (int)(r.Length - (Position - r.Offset));
                     if (bytesRemain > allBytes2Read)
@@ -143,7 +161,7 @@ namespace HttpStream
                 if (Position < _ranges[idx].Offset)
                 {
                     bytes2Read = (int)(_ranges[idx].Offset - Position);
-                    var r = await LoadAsync(_cacheStream, Position, bytes2Read, cancellationToken);
+                    var r = await LoadAsync(_cacheStream, new Range(Position, bytes2Read), cancellationToken);
                     updateRenges(firstRange, r);
                     if (r.Contains(Position))
                     {
@@ -272,50 +290,6 @@ namespace HttpStream
         {
             throw new NotSupportedException();
         }
-    }
-
-    public class Range : IComparable<Range>
-    {
-        public long Offset;
-        public long Length;
-
-        public Range(long offset, long length)
-        {
-            Offset = offset;
-            Length = length;
-        }
-
-        public long End { get { return Offset + Length; } }
-
-        public bool Contains(Range r)
-        {
-            if (r.Offset < Offset || r.End > End)
-                return false;
-            return true;
-        }
-
-        public bool Contains(long pos, long size)
-        {
-            if (pos < Offset || pos + size > End)
-                return false;
-            return true;
-        }
-
-        public bool Contains(long pos)
-        {
-            if (pos < Offset || pos >= End)
-                return false;
-            return true;
-        }
-
-        #region IComparable implementation
-
-        public int CompareTo(Range other)
-        {
-            return (int)(Offset - other.Offset);
-        }
-
-        #endregion
     }
 }
 

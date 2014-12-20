@@ -12,29 +12,86 @@ using System.Threading;
 
 namespace HttpStream
 {
+    /// <summary>
+    /// Implements randomly accessible <see cref="Stream"/> for HTTP 1.1 transport.
+    /// </summary>
 	public class HttpStream : CacheStream
 	{
 		Uri _uri;
 		HttpClient _httpClient;
 		bool _ownHttpClient;
-		public long Size { get; private set; }
-		public bool SizeAvailable { get; private set; }
-		public bool InspectionFinished { get; private set; }
-		public DateTime LastModified { get; private set; }
-		public int BufferingSize { get; set; }
+        int _bufferingSize = 64 * 1024;
 
-		public HttpStream(Uri uri) : this(uri, new MemoryStream(), true)
+        /// <summary>
+        /// Size in bytes of the file downloaing if available; otherwise it returns <see cref="long.MaxValue"/>.
+        /// <seealso cref="FileSizeAvailable"/>
+        /// <seealso cref="GetStreamLengthOrDefault"/>
+        /// </summary>
+        public long FileSize { get; private set; }
+        /// <summary>
+        /// Whether <see cref="FileSize"/> is available or not.
+        /// <seealso cref="FileSize"/>
+        /// <seealso cref="GetStreamLengthOrDefault"/>
+        /// </summary>
+		public bool FileSizeAvailable { get; private set; }
+        /// <summary>
+        /// Whether file properties, like file size and last modified time is correctly inspected.
+        /// </summary>
+		public bool InspectionFinished { get; private set; }
+        /// <summary>
+        /// When the file is last modified.
+        /// </summary>
+		public DateTime LastModified { get; private set; }
+        /// <summary>
+        /// Buffering size for downloading the file.
+        /// </summary>
+		public int BufferingSize
+        {
+            get { return _bufferingSize; }
+            set
+            {
+                if (value == 0 || bitCount(value) != 1)
+                    throw new ArgumentOutOfRangeException("BufferingSize should be 2^n.");
+                _bufferingSize = value;
+            }
+        }
+
+        static int bitCount(int i)
+        {
+            i = i - ((i >> 1) & 0x55555555);
+            i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+            return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+        }
+
+        /// <summary>
+        /// Creates a new HttpStream with the specified URI.
+        /// The file will be cached on memory.
+        /// </summary>
+        /// <param name="uri">URI of the file to download.</param>
+        public HttpStream(Uri uri) : this(uri, new MemoryStream(), true)
 		{
 		}
 
+        /// <summary>
+        /// Creates a new HttpStream with the specified URI.
+        /// </summary>
+        /// <param name="uri">URI of the file to download.</param>
+        /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
+        /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
 		public HttpStream(Uri uri, Stream cache, bool ownStream) : this(uri, cache, ownStream, new HttpClient())
 		{
 		}
 
+        /// <summary>
+        /// Creates a new HttpStream with the specified URI.
+        /// </summary>
+        /// <param name="uri">URI of the file to download.</param>
+        /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
+        /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
+        /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests.</param>
 		public HttpStream(Uri uri, Stream cache, bool ownStream, HttpClient httpClient) : base(cache, ownStream)
 		{
-			BufferingSize = 1024 * 1024;
-			Size = long.MaxValue;
+			FileSize = long.MaxValue;
 			_uri = uri;
 			_httpClient = httpClient;
 			if (_httpClient == null)
@@ -53,38 +110,54 @@ namespace HttpStream
 			}
 		}
 
-		public override long GetStreamLengthOrFail(long defValue)
+        /// <summary>
+        /// Size in bytes of the file downloaing if available.
+        /// </summary>
+        /// <param name="defValue">If the file is not available, the value is returned.</param>
+        /// <seealso cref="FileSize"/>
+        /// <seealso cref="FileSizeAvailable"/>
+        /// <returns>The file size.</returns>
+		public override long GetStreamLengthOrDefault(long defValue)
 		{
-			return SizeAvailable ? Size : defValue;
+			return FileSizeAvailable ? FileSize : defValue;
 		}
 
-		public override async Task<Range> LoadAsync(Stream stream, long pos, int count, CancellationToken cancellationToken)
+        /// <summary>
+        /// Download a portion of file and write to a stream.
+        /// </summary>
+        /// <param name="stream">Stream to write on.</param>
+        /// <param name="rangeToLoad">Byte range in the file to load.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The byte range actually downloaded. It may be larger than the requested range.</returns>
+		public override async Task<Range> LoadAsync(Stream stream, Range rangeToLoad, CancellationToken cancellationToken)
 		{
-			if(count == 0)
-				return new Range(pos, 0);
+            if (stream == null || rangeToLoad == null)
+                throw new ArgumentNullException();
+			if(rangeToLoad.Length == 0)
+				return rangeToLoad;
 
 			// confirm block unit access
 			long lowfilter = BufferingSize - 1;
-			long begPos = pos & ~lowfilter;
-			long endPos = (pos + count + lowfilter) & ~lowfilter;
-			pos &= ~lowfilter;
-			if(SizeAvailable && endPos > Size)
-				endPos = Size;
-			count = (int)(endPos - begPos);
+			long begPos = rangeToLoad.Offset & ~lowfilter;
+			long endPos = (rangeToLoad.Offset + rangeToLoad.Length + lowfilter) & ~lowfilter;
+			rangeToLoad.Offset &= ~lowfilter;
+			if(FileSizeAvailable && endPos > FileSize)
+				endPos = FileSize;
+			rangeToLoad.Length = (int)(endPos - begPos);
 
 			var req = new HttpRequestMessage(HttpMethod.Get, _uri);
 			// Use "Range" header to sepcify the data offset and size
-			req.Headers.Add("Range", string.Format("bytes={0}-{1}", begPos, begPos + count - 1));
+			req.Headers.Add("Range", string.Format("bytes={0}-{1}", begPos, begPos + rangeToLoad.Length - 1));
 
 			// post the request
 			var res = await _httpClient.SendAsync(req, cancellationToken);
-			Debug.WriteLine(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, begPos, begPos + count - 1));
-
 			if(!res.IsSuccessStatusCode)
-				throw new Exception(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, begPos, begPos + count - 1));
+				throw new Exception(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, begPos, begPos + rangeToLoad.Length - 1));
+            else
+                Debug.WriteLine(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, begPos, begPos + rangeToLoad.Length - 1));
 
-			// retrieve the resulting Content-Range
-			bool getRanges = true;
+            // retrieve the resulting Content-Range
+            bool getRanges = true;
 			long begin = 0, end = long.MaxValue;
 			long size = long.MaxValue;
 			try
@@ -97,17 +170,17 @@ namespace HttpStream
 				end = long.Parse(m.Groups[2].Value);
 				size = end - begin + 1;
 
-				if(!SizeAvailable)
+				if(!FileSizeAvailable)
 				{
 					var sz = m.Groups[3].Value;
 					if (sz != "*")
 					{
-						Size = long.Parse(sz);
-						SizeAvailable = true;
+						FileSize = long.Parse(sz);
+						FileSizeAvailable = true;
 					}
 				}
 
-                Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, Size));
+                Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, FileSize));
 			}
 			catch
 			{
@@ -117,9 +190,9 @@ namespace HttpStream
 					// instead.
 					getRanges = false;
 					begin = 0;
-                    Size = end = size = long.Parse(res.Content.Headers.GetValues("Content-Length").First());
-                    SizeAvailable = true;
-                    Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, Size));
+                    FileSize = end = size = long.Parse(res.Content.Headers.GetValues("Content-Length").First());
+                    FileSizeAvailable = true;
+                    Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, FileSize));
 				}
 				catch
 				{
@@ -157,10 +230,10 @@ namespace HttpStream
 				copied += bytesRead;
 			}
 
-			if(!SizeAvailable && !getRanges)
+			if(!FileSizeAvailable && !getRanges)
 			{
-				Size = copied;
-				SizeAvailable = true;
+				FileSize = copied;
+				FileSizeAvailable = true;
 			}
 
 			return new Range(begin, copied);
