@@ -16,10 +16,10 @@ namespace HttpStream
     /// Implements randomly accessible <see cref="Stream"/> on HTTP 1.1 transport.
     /// </summary>
 	public class HttpStream : CacheStream
-	{
-		Uri _uri;
-		HttpClient _httpClient;
-		bool _ownHttpClient;
+    {
+        Uri _uri;
+        HttpClient _httpClient;
+        bool _ownHttpClient;
         int _bufferingSize = 64 * 1024;
 
         /// <summary>
@@ -73,8 +73,8 @@ namespace HttpStream
         /// </summary>
         /// <param name="uri">URI of the file to download.</param>
         public HttpStream(Uri uri) : this(uri, new MemoryStream(), true)
-		{
-		}
+        {
+        }
 
         /// <summary>
         /// Creates a new HttpStream with the specified URI.
@@ -83,8 +83,8 @@ namespace HttpStream
         /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
 		public HttpStream(Uri uri, Stream cache, bool ownStream) : this(uri, cache, ownStream, null, null)
-		{
-		}
+        {
+        }
 
         /// <summary>
         /// Creates a new HttpStream with the specified URI.
@@ -106,25 +106,25 @@ namespace HttpStream
         /// <param name="rangesAlreadyCached">File ranges already cached on <paramref name="cacheStream"/> if any; otherwise it can be <c>null</c>.</param>
         /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests.</param>
 		public HttpStream(Uri uri, Stream cache, bool ownStream, IEnumerable<Range> rangesAlreadyCached, HttpClient httpClient) : base(cache, ownStream, rangesAlreadyCached)
-		{
-			FileSize = long.MaxValue;
-			_uri = uri;
-			_httpClient = httpClient;
-			if (_httpClient == null)
-			{
-				_httpClient = new HttpClient();
-				_ownHttpClient = true;
-			}
-		}
+        {
+            FileSize = long.MaxValue;
+            _uri = uri;
+            _httpClient = httpClient;
+            if (_httpClient == null)
+            {
+                _httpClient = new HttpClient();
+                _ownHttpClient = true;
+            }
+        }
 
-		protected override void Dispose(bool disposing)
-		{
-			base.Dispose(disposing);
-			if (disposing && _ownHttpClient)
-			{
-				_httpClient.Dispose();
-			}
-		}
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (disposing && _ownHttpClient)
+            {
+                _httpClient.Dispose();
+            }
+        }
 
         /// <summary>
         /// Size in bytes of the file downloaing if available.
@@ -134,9 +134,9 @@ namespace HttpStream
         /// <seealso cref="FileSizeAvailable"/>
         /// <returns>The file size.</returns>
 		public override long GetStreamLengthOrDefault(long defValue)
-		{
-			return FileSizeAvailable ? FileSize : defValue;
-		}
+        {
+            return FileSizeAvailable ? FileSize : defValue;
+        }
 
         /// <summary>
         /// Download a portion of file and write to a stream.
@@ -146,36 +146,36 @@ namespace HttpStream
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The byte range actually downloaded. It may be larger than the requested range.</returns>
 		protected override async Task<Range> LoadAsync(Stream stream, Range rangeToLoad, CancellationToken cancellationToken)
-		{
+        {
             if (stream == null || rangeToLoad == null)
                 throw new ArgumentNullException();
-			if(rangeToLoad.Length == 0)
-				return rangeToLoad;
+            if (rangeToLoad.Length == 0)
+                return rangeToLoad;
 
-			// confirm block unit access
-			long lowfilter = BufferingSize - 1;
-			long begPos = rangeToLoad.Offset & ~lowfilter;
-			long endPos = (rangeToLoad.Offset + rangeToLoad.Length + lowfilter) & ~lowfilter;
-			rangeToLoad.Offset &= ~lowfilter;
-			if(FileSizeAvailable && endPos > FileSize)
-				endPos = FileSize;
-			rangeToLoad.Length = (int)(endPos - begPos);
+            // confirm block unit access
+            long lowfilter = BufferingSize - 1;
+            long begPos = rangeToLoad.Offset & ~lowfilter;
+            long endPos = (rangeToLoad.Offset + rangeToLoad.Length + lowfilter) & ~lowfilter;
+            rangeToLoad.Offset &= ~lowfilter;
+            if (FileSizeAvailable && endPos > FileSize)
+                endPos = FileSize;
+            rangeToLoad.Length = (int)(endPos - begPos);
 
-			var req = new HttpRequestMessage(HttpMethod.Get, _uri);
-			// Use "Range" header to sepcify the data offset and size
-			req.Headers.Add("Range", string.Format("bytes={0}-{1}", begPos, begPos + rangeToLoad.Length - 1));
+            var req = new HttpRequestMessage(HttpMethod.Get, _uri);
+            // Use "Range" header to sepcify the data offset and size
+            req.Headers.Add("Range", string.Format("bytes={0}-{1}", begPos, begPos + rangeToLoad.Length - 1));
 
-			// post the request
-			var res = await _httpClient.SendAsync(req, cancellationToken);
-			if(!res.IsSuccessStatusCode)
-				throw new Exception(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, begPos, begPos + rangeToLoad.Length - 1));
+            // post the request
+            var res = await _httpClient.SendAsync(req, cancellationToken);
+            if (!res.IsSuccessStatusCode)
+                throw new Exception(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, begPos, begPos + rangeToLoad.Length - 1));
             else
                 Debug.WriteLine(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, begPos, begPos + rangeToLoad.Length - 1));
 
             // retrieve the resulting Content-Range
             bool getRanges = true;
-			long begin = 0, end = long.MaxValue;
-			long size = long.MaxValue;
+            long begin = 0, end = long.MaxValue;
+            long size = long.MaxValue;
             if (!actionIfFound(res, "Content-Range", range =>
             {
                 // 206
@@ -197,18 +197,18 @@ namespace HttpStream
 
                 Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, FileSize));
             }))
-			{
-				// In some case, there's no Content-Range but Content-Length
-				// instead.
-				getRanges = false;
-				begin = 0;
+            {
+                // In some case, there's no Content-Range but Content-Length
+                // instead.
+                getRanges = false;
+                begin = 0;
                 actionIfFound(res, "Content-Length", v =>
                 {
                     FileSize = end = size = long.Parse(v);
                     FileSizeAvailable = true;
                     Debug.WriteLine("Content-Type: " + ContentType);
                 });
-			}
+            }
 
             actionIfFound(res, "Content-Type", v =>
             {
@@ -222,40 +222,40 @@ namespace HttpStream
                 Debug.WriteLine("Last-Modified: " + LastModified.ToString("O"));
             });
 
-			InspectionFinished = true;
+            InspectionFinished = true;
 
-			//if(size > 0xffffffffULL)
-			//    celThrow2(errOperationFailed, "Data size too large!");
+            //if(size > 0xffffffffULL)
+            //    celThrow2(errOperationFailed, "Data size too large!");
 
-			var s = await res.Content.ReadAsStreamAsync();
+            var s = await res.Content.ReadAsStreamAsync();
 
-			int size32 = (int)size;
-			stream.Position = begin;
-			var buf = new byte[BufferingSize];
-			var copied = 0;
-			while (size32 > 0)
-			{
-				var bytes2Read = Math.Min(size32, BufferingSize);
-				var bytesRead = await s.ReadAsync(buf, 0, bytes2Read, cancellationToken);
-				if (bytesRead == 0)
-					break;
+            int size32 = (int)size;
+            stream.Position = begin;
+            var buf = new byte[BufferingSize];
+            var copied = 0;
+            while (size32 > 0)
+            {
+                var bytes2Read = Math.Min(size32, BufferingSize);
+                var bytesRead = await s.ReadAsync(buf, 0, bytes2Read, cancellationToken);
+                if (bytesRead == 0)
+                    break;
 
-				await stream.WriteAsync(buf, 0, bytesRead, cancellationToken);
-				size32 -= bytesRead;
-				copied += bytesRead;
-			}
+                await stream.WriteAsync(buf, 0, bytesRead, cancellationToken);
+                size32 -= bytesRead;
+                copied += bytesRead;
+            }
 
-			if(!FileSizeAvailable && !getRanges)
-			{
-				FileSize = copied;
-				FileSizeAvailable = true;
-			}
+            if (!FileSizeAvailable && !getRanges)
+            {
+                FileSize = copied;
+                FileSizeAvailable = true;
+            }
 
-			var r = new Range(begin, copied);
+            var r = new Range(begin, copied);
             if (RangeDownloaded != null)
                 RangeDownloaded(this, new RangeDownloadedEventArgs { NewlyLoaded = r });
             return r;
-		}
+        }
 
         bool actionIfFound(HttpResponseMessage res, string name, Action<string> action)
         {
@@ -265,7 +265,7 @@ namespace HttpStream
                 action(strs.First());
                 return true;
             }
-            return false;            
+            return false;
         }
 
         /// <summary>
@@ -273,14 +273,14 @@ namespace HttpStream
         /// </summary>
         public event EventHandler<RangeDownloadedEventArgs> RangeDownloaded;
 
-		static DateTime parseDateTime(string dateTime)
-		{
-			return DateTime.ParseExact(dateTime,
-				"ddd, dd MMM yyyy HH:mm:ss 'UTC'",
-				CultureInfo.InvariantCulture.DateTimeFormat,
-				DateTimeStyles.AssumeUniversal);
-		}
-	}
+        static DateTime parseDateTime(string dateTime)
+        {
+            return DateTime.ParseExact(dateTime,
+                "ddd, dd MMM yyyy HH:mm:ss 'UTC'",
+                CultureInfo.InvariantCulture.DateTimeFormat,
+                DateTimeStyles.AssumeUniversal);
+        }
+    }
 
     /// <summary>
     /// Used by <see cref="HttpStream.RangeDownloaded"/> event.
