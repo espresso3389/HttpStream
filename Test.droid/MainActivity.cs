@@ -9,6 +9,7 @@ using Android.OS;
 
 using Android.Graphics;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace Test
 {
@@ -37,10 +38,13 @@ namespace Test
 
         async Task loadAsync()
         {
+            var cacheFileName = System.IO.Path.Combine(Application.CacheDir.AbsolutePath, "cache.pdf");
+            var fs = File.Create(cacheFileName);
+
             var imageView = FindViewById<ImageView>(Resource.Id.imageView1);
 
             var uri = new Uri(@"https://dl.dropboxusercontent.com/u/150906/trc_m.jpg");
-            var httpStream = new HttpStream.HttpStream(uri);
+            var httpStream = new HttpStream.HttpStream(uri, fs, true);
 
             var bmp = await BitmapFactory.DecodeStreamAsync(httpStream);
 
