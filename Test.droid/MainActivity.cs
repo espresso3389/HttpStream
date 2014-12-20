@@ -24,15 +24,6 @@ namespace Test
 
 			// Set our view from the "main" layout resource
 			SetContentView (Resource.Layout.Main);
-
-			// Get our button from the layout resource,
-			// and attach an event to it
-			Button button = FindViewById<Button> (Resource.Id.myButton);
-			
-			button.Click += delegate {
-				button.Text = string.Format ("{0} Clicks!", count++);
-			};
-
             loadAsync();
 		}
 
@@ -42,15 +33,23 @@ namespace Test
             var fs = File.Create(cacheFileName);
 
             var imageView = FindViewById<ImageView>(Resource.Id.imageView1);
+            imageView.Visibility = ViewStates.Gone;
+            var progBar = FindViewById<ProgressBar>(Resource.Id.progressBar1);
 
             var uri = new Uri(@"https://dl.dropboxusercontent.com/u/150906/trc_m.jpg");
             var httpStream = new HttpStream.HttpStream(uri, fs, true);
+            httpStream.RangeDownloaded += (sender, e) =>
+            {
+                progBar.Max = 1000;
+                progBar.Progress = (int)(1000 * httpStream.CoveredRatio);
+            };
 
             var bmp = await BitmapFactory.DecodeStreamAsync(httpStream);
 
             imageView.SetImageBitmap(bmp);
+            imageView.Visibility = ViewStates.Visible;
         }
-	}
+    }
 }
 
 

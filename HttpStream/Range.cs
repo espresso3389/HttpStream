@@ -33,6 +33,17 @@ namespace HttpStream
         }
 
         /// <summary>
+        /// Create a new <see cref="Range"/> object from offset and end.
+        /// </summary>
+        /// <param name="offset">Offset of the range.</param>
+        /// <param name="end">End of the range.</param>
+        /// <returns>Newly created <see cref="Range"/> object.</returns>
+        public static Range FromOffsets(long offset, long end)
+        {
+            return new Range(offset, end - offset);
+        }
+
+        /// <summary>
         /// The end of the range.
         /// </summary>
         public long End { get { return Offset + Length; } }

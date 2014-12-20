@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Diagnostics;
@@ -12,24 +13,44 @@ namespace HttpStream
     /// </summary>
     public abstract class CacheStream : Stream
     {
-        public CacheStream(Stream cacheStream, bool ownStream)
+        /// <summary>
+        /// Creates a new <see cref="CacheStream"/> object.
+        /// </summary>
+        /// <param name="cacheStream"><see cref="Stream"/> to cache the file.</param>
+        /// <param name="ownCacheStream"><c>true</c> to instruct the object to close <paramref name="cacheStream"/> on its cleanup.</param>
+        public CacheStream(Stream cacheStream, bool ownCacheStream) : this(cacheStream, ownCacheStream, null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="CacheStream"/> object.
+        /// </summary>
+        /// <param name="cacheStream"><see cref="Stream"/> to cache the file.</param>
+        /// <param name="ownCacheStream"><c>true</c> to instruct the object to close <paramref name="cacheStream"/> on its cleanup.</param>
+        /// <param name="rangesAlreadyCached">File ranges already cached on <paramref name="cacheStream"/> if any; otherwise it can be <c>null</c>.</param>
+        public CacheStream(Stream cacheStream, bool ownCacheStream, IEnumerable<Range> rangesAlreadyCached)
         {
             if (cacheStream == null)
             {
                 cacheStream = new MemoryStream();
-                ownStream = true;
+                ownCacheStream = true;
             }
 
             if (!cacheStream.CanSeek || !cacheStream.CanRead || !cacheStream.CanWrite)
                 throw new ArgumentException("cacheStream should be seekable/readable/writeable.", "cacheStream");
 
             _cacheStream = cacheStream;
-            _ownStream = ownStream;
+            _ownStream = ownCacheStream;
+
+            if (rangesAlreadyCached != null)
+                _ranges = new List<Range>(rangesAlreadyCached);
+            else
+                _ranges = new List<Range>();
         }
 
         Stream _cacheStream;
         bool _ownStream;
-        List<Range> _ranges = new List<Range>();
+        List<Range> _ranges;
 
         protected override void Dispose(bool disposing)
         {
@@ -96,6 +117,58 @@ namespace HttpStream
         #endregion
 
         /// <summary>
+        /// Whether the file is fully cached to the cache stream or not.
+        /// </summary>
+        public bool IsFullyCached
+        {
+            get
+            {
+                return _ranges.Count == 1 && _ranges[0].Offset == 0 && _ranges[1].Length == Length;
+            }
+        }
+
+        /// <summary>
+        /// The ranges cached already.
+        /// </summary>
+        public IEnumerable<Range> RangesCached
+        {
+            get { return _ranges; }
+        }
+
+        /// <summary>
+        /// The ranges not cached yet.
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<Range> RangesNotCached
+        {
+            get
+            {
+                long offset = 0;
+                foreach (var r in _ranges)
+                {
+                    if (offset < r.Offset)
+                        yield return Range.FromOffsets(offset, r.Offset);
+                    offset = r.End;
+                }
+                if (offset < Length)
+                    yield return Range.FromOffsets(offset, Length);
+            }
+        }
+
+        /// <summary>
+        /// Cache cover ratio so far. 1.0 for 100%.
+        /// </summary>
+        public float CoveredRatio
+        {
+            get
+            {
+                if (Length == 0)
+                    return 1f;
+                return (float)(RangesCached.Aggregate(.0, (a, b) => a + b.Length) / Length);
+            }
+        }
+
+        /// <summary>
         /// Get the length of the stream.
         /// </summary>
         /// <param name="defValue">The value to be returned if the actual length is not available.</param>
@@ -109,7 +182,7 @@ namespace HttpStream
         /// <param name="rangeToLoad">Byte range in the file to load.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The byte range actually loaded. It may be larger than the requested range.</returns>
-        public abstract Task<Range> LoadAsync(Stream stream, Range rangeToLoad, CancellationToken cancellationToken);
+        protected abstract Task<Range> LoadAsync(Stream stream, Range rangeToLoad, CancellationToken cancellationToken);
 
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {

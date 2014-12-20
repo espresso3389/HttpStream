@@ -13,7 +13,7 @@ using System.Threading;
 namespace HttpStream
 {
     /// <summary>
-    /// Implements randomly accessible <see cref="Stream"/> for HTTP 1.1 transport.
+    /// Implements randomly accessible <see cref="Stream"/> on HTTP 1.1 transport.
     /// </summary>
 	public class HttpStream : CacheStream
 	{
@@ -42,6 +42,10 @@ namespace HttpStream
         /// When the file is last modified.
         /// </summary>
 		public DateTime LastModified { get; private set; }
+        /// <summary>
+        /// Content type of the file.
+        /// </summary>
+        public string ContentType { get; private set; }
         /// <summary>
         /// Buffering size for downloading the file.
         /// </summary>
@@ -78,7 +82,7 @@ namespace HttpStream
         /// <param name="uri">URI of the file to download.</param>
         /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
-		public HttpStream(Uri uri, Stream cache, bool ownStream) : this(uri, cache, ownStream, new HttpClient())
+		public HttpStream(Uri uri, Stream cache, bool ownStream) : this(uri, cache, ownStream, null, null)
 		{
 		}
 
@@ -88,8 +92,20 @@ namespace HttpStream
         /// <param name="uri">URI of the file to download.</param>
         /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
+        /// <param name="rangesAlreadyCached">File ranges already cached on <paramref name="cacheStream"/> if any; otherwise it can be <c>null</c>.</param>
+		public HttpStream(Uri uri, Stream cache, bool ownStream, IEnumerable<Range> rangesAlreadyCached) : this(uri, cache, ownStream, rangesAlreadyCached, null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new HttpStream with the specified URI.
+        /// </summary>
+        /// <param name="uri">URI of the file to download.</param>
+        /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
+        /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
+        /// <param name="rangesAlreadyCached">File ranges already cached on <paramref name="cacheStream"/> if any; otherwise it can be <c>null</c>.</param>
         /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests.</param>
-		public HttpStream(Uri uri, Stream cache, bool ownStream, HttpClient httpClient) : base(cache, ownStream)
+		public HttpStream(Uri uri, Stream cache, bool ownStream, IEnumerable<Range> rangesAlreadyCached, HttpClient httpClient) : base(cache, ownStream, rangesAlreadyCached)
 		{
 			FileSize = long.MaxValue;
 			_uri = uri;
@@ -129,7 +145,7 @@ namespace HttpStream
         /// <param name="rangeToLoad">Byte range in the file to load.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The byte range actually downloaded. It may be larger than the requested range.</returns>
-		public override async Task<Range> LoadAsync(Stream stream, Range rangeToLoad, CancellationToken cancellationToken)
+		protected override async Task<Range> LoadAsync(Stream stream, Range rangeToLoad, CancellationToken cancellationToken)
 		{
             if (stream == null || rangeToLoad == null)
                 throw new ArgumentNullException();
@@ -160,53 +176,52 @@ namespace HttpStream
             bool getRanges = true;
 			long begin = 0, end = long.MaxValue;
 			long size = long.MaxValue;
-			try
-			{
-				// 206
-                var range = res.Content.Headers.GetValues("Content-Range").First();
-				Debug.WriteLine(range);
-				var m = Regex.Match(range, @"bytes\s+([0-9]+)-([0-9]+)/(\w+)");
-				begin = long.Parse(m.Groups[1].Value);
-				end = long.Parse(m.Groups[2].Value);
-				size = end - begin + 1;
+            if (!actionIfFound(res, "Content-Range", range =>
+            {
+                // 206
+                Debug.WriteLine(range);
+                var m = Regex.Match(range, @"bytes\s+([0-9]+)-([0-9]+)/(\w+)");
+                begin = long.Parse(m.Groups[1].Value);
+                end = long.Parse(m.Groups[2].Value);
+                size = end - begin + 1;
 
-				if(!FileSizeAvailable)
-				{
-					var sz = m.Groups[3].Value;
-					if (sz != "*")
-					{
-						FileSize = long.Parse(sz);
-						FileSizeAvailable = true;
-					}
-				}
+                if (!FileSizeAvailable)
+                {
+                    var sz = m.Groups[3].Value;
+                    if (sz != "*")
+                    {
+                        FileSize = long.Parse(sz);
+                        FileSizeAvailable = true;
+                    }
+                }
 
                 Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, FileSize));
-			}
-			catch
+            }))
 			{
-				try
-				{
-					// In some case, there's no Content-Range but Content-Length
-					// instead.
-					getRanges = false;
-					begin = 0;
-                    FileSize = end = size = long.Parse(res.Content.Headers.GetValues("Content-Length").First());
+				// In some case, there's no Content-Range but Content-Length
+				// instead.
+				getRanges = false;
+				begin = 0;
+                actionIfFound(res, "Content-Length", v =>
+                {
+                    FileSize = end = size = long.Parse(v);
                     FileSizeAvailable = true;
-                    Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, FileSize));
-				}
-				catch
-				{
-					Debug.WriteLine("No Content-Length...");
-				}
+                    Debug.WriteLine("Content-Type: " + ContentType);
+                });
 			}
 
-			try
-			{
-				LastModified = parseLastModified(res);
-			}
-			catch
-			{
-			}
+            actionIfFound(res, "Content-Type", v =>
+            {
+                ContentType = v;
+                Debug.WriteLine("Content-Type: " + ContentType);
+            });
+
+            actionIfFound(res, "Last-Modified", v =>
+            {
+                LastModified = parseDateTime(v);
+                Debug.WriteLine("Last-Modified: " + LastModified.ToString("O"));
+            });
+
 			InspectionFinished = true;
 
 			//if(size > 0xffffffffULL)
@@ -236,15 +251,29 @@ namespace HttpStream
 				FileSizeAvailable = true;
 			}
 
-			return new Range(begin, copied);
+			var r = new Range(begin, copied);
+            if (RangeDownloaded != null)
+                RangeDownloaded(this, new RangeDownloadedEventArgs { NewlyLoaded = r });
+            return r;
 		}
 
-		DateTime parseLastModified(HttpResponseMessage res)
-		{
-            return parseDateTime(res.Content.Headers.GetValues("Last-Modified").First());
-		}
+        bool actionIfFound(HttpResponseMessage res, string name, Action<string> action)
+        {
+            IEnumerable<string> strs;
+            if (res.Content.Headers.TryGetValues(name, out strs))
+            {
+                action(strs.First());
+                return true;
+            }
+            return false;            
+        }
 
-		DateTime parseDateTime(string dateTime)
+        /// <summary>
+        /// Invoked when a new range is downloaded.
+        /// </summary>
+        public event EventHandler<RangeDownloadedEventArgs> RangeDownloaded;
+
+		static DateTime parseDateTime(string dateTime)
 		{
 			return DateTime.ParseExact(dateTime,
 				"ddd, dd MMM yyyy HH:mm:ss 'UTC'",
@@ -252,5 +281,16 @@ namespace HttpStream
 				DateTimeStyles.AssumeUniversal);
 		}
 	}
+
+    /// <summary>
+    /// Used by <see cref="HttpStream.RangeDownloaded"/> event.
+    /// </summary>
+    public class RangeDownloadedEventArgs : EventArgs
+    {
+        /// <summary>
+        /// Range newly downloaded.
+        /// </summary>
+        public Range NewlyLoaded { get; set; }
+    }
 }
 
