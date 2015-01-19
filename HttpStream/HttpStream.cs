@@ -20,7 +20,7 @@ namespace HttpStream
         Uri _uri;
         HttpClient _httpClient;
         bool _ownHttpClient;
-        int _bufferingSize = 64 * 1024;
+        int _bufferingSize;
 
         /// <summary>
         /// Size in bytes of the file downloaing if available; otherwise it returns <see cref="long.MaxValue"/>.
@@ -112,6 +112,7 @@ namespace HttpStream
                 _httpClient = new HttpClient();
                 _ownHttpClient = true;
             }
+            BufferingSize = cachePageSize;
         }
 
         protected override void Dispose(bool disposing)
@@ -188,7 +189,7 @@ namespace HttpStream
                     }
                 }
 
-                //Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, FileSize));
+                Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, StreamLength));
             }))
             {
                 // In some case, there's no Content-Range but Content-Length

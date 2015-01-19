@@ -284,7 +284,7 @@ namespace HttpStream
 
                     var sizeLoaded = await LoadAsync(_cacheStream, offsetToLoad, sizeToLoad, cancellationToken).ConfigureAwait(false);
                     if (offsetToLoad + sizeLoaded != GetStreamLengthOrDefault(long.MaxValue) && sizeToLoad != sizeLoaded)
-                        throw new IOException(string.Format("Could not read all of the requested bytes: {0}/{1}", sizeLoaded, sizeToLoad));
+                        throw new IOException(string.Format("Could not read all of the requested bytes: {0} of {1}", sizeLoaded, sizeToLoad));
 
                     for (var j = 0; j < pagesNotCached; j++)
                         setPageCached(i + j);
@@ -305,7 +305,7 @@ namespace HttpStream
                 _cacheStream.Position = pos;
                 var bytes = await _cacheStream.ReadAsync(buffer, offset, bytes2Read, cancellationToken).ConfigureAwait(false);
                 if (bytes != bytes2Read)
-                    throw new IOException(string.Format("Could not read all of the requested bytes from the cache: {0}/{1}", bytes, bytes2Read));
+                    throw new IOException(string.Format("Could not read all of the requested bytes from the cache: {0} of {1}", bytes, bytes2Read));
 
                 pos += bytes2Read;
                 offset += bytes2Read;
