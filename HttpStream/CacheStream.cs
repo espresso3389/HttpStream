@@ -18,7 +18,9 @@ namespace HttpStream
         /// </summary>
         /// <param name="cacheStream"><see cref="Stream"/> to cache the file.</param>
         /// <param name="ownCacheStream"><c>true</c> to instruct the object to close <paramref name="cacheStream"/> on its cleanup.</param>
-        public CacheStream(Stream cacheStream, bool ownCacheStream) : this(cacheStream, ownCacheStream, null)
+        /// <param name="cachePageSize">Cache page size. The default is 32K.</param>
+        public CacheStream(Stream cacheStream, bool ownCacheStream, int cachePageSize = 32 * 1024)
+            : this(cacheStream, ownCacheStream, cachePageSize, null)
         {
         }
 
@@ -27,8 +29,9 @@ namespace HttpStream
         /// </summary>
         /// <param name="cacheStream"><see cref="Stream"/> to cache the file.</param>
         /// <param name="ownCacheStream"><c>true</c> to instruct the object to close <paramref name="cacheStream"/> on its cleanup.</param>
-        /// <param name="rangesAlreadyCached">File ranges already cached on <paramref name="cacheStream"/> if any; otherwise it can be <c>null</c>.</param>
-        public CacheStream(Stream cacheStream, bool ownCacheStream, IEnumerable<Range> rangesAlreadyCached)
+        /// <param name="cachePageSize">Cache page size.</param>
+        /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
+        public CacheStream(Stream cacheStream, bool ownCacheStream, int cachePageSize, byte[] cached)
         {
             if (cacheStream == null)
             {
@@ -41,16 +44,15 @@ namespace HttpStream
 
             _cacheStream = cacheStream;
             _ownStream = ownCacheStream;
-
-            if (rangesAlreadyCached != null)
-                _ranges = new List<Range>(rangesAlreadyCached);
-            else
-                _ranges = new List<Range>();
+            _cached = cached;
+            _cachePageSize = cachePageSize;
         }
 
         Stream _cacheStream;
         bool _ownStream;
-        List<Range> _ranges;
+        byte[] _cached;
+        int _cachePageSize;
+        bool _isFullyCached;
 
         protected override void Dispose(bool disposing)
         {
@@ -69,12 +71,20 @@ namespace HttpStream
 
         public override void Flush()
         {
-            FlushAsync().Wait();
+            // Nothing to do; we only supports read accesses.
         }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            return ReadAsync(buffer, offset, count).Result;
+            try
+            {
+                Debug.WriteLine("CacheStream.Read: Waiting...");
+                return ReadAsync(buffer, offset, count).Result;
+            }
+            finally
+            {
+                Debug.WriteLine("CacheStream.Read: OK.");
+            }
         }
 
         public override long Seek(long offset, SeekOrigin origin)
@@ -110,7 +120,32 @@ namespace HttpStream
 
         public override bool CanWrite { get { return false; } }
 
-        public override long Length { get { return GetStreamLengthOrDefault(long.MaxValue); } }
+        public override long Length
+        {
+            get
+            {
+                try
+                {
+                    Debug.WriteLine("CacheStream.Length: Waiting for GetLengthAsync...");
+                    return GetLengthAsync().Result;
+                }
+                finally
+                {
+                    Debug.WriteLine("CacheStream.Length: OK.");
+                }
+            }
+        }
+
+        public async Task<long> GetLengthAsync()
+        {
+            var length = GetStreamLengthOrDefault(long.MaxValue);
+            if (length == long.MaxValue)
+            {
+                await ReadAsync(new byte[1], 0, 1).ConfigureAwait(false);
+                length = GetStreamLengthOrDefault(long.MaxValue);
+            }
+            return length;
+        }
 
         public override long Position { get; set; }
 
@@ -123,49 +158,70 @@ namespace HttpStream
         {
             get
             {
-                return _ranges.Count == 1 && _ranges[0].Offset == 0 && _ranges[1].Length == Length;
-            }
-        }
+                if (_isFullyCached)
+                    return true;
+                if (_cached == null)
+                    return false;
 
-        /// <summary>
-        /// The ranges cached already.
-        /// </summary>
-        public IEnumerable<Range> RangesCached
-        {
-            get { return _ranges; }
-        }
+                var size = GetStreamLengthOrDefault(long.MaxValue);
+                var pagesLong = (size + _cachePageSize - 1) / _cachePageSize;
 
-        /// <summary>
-        /// The ranges not cached yet.
-        /// </summary>
-        /// <returns></returns>
-        public IEnumerable<Range> RangesNotCached
-        {
-            get
-            {
-                long offset = 0;
-                foreach (var r in _ranges)
+                // PageSize=32K case, the maximum is 128TB (= 4GB * 32K).
+                if (pagesLong > int.MaxValue)
+                    throw new InvalidDataException("The file size is too large.");
+
+                var pages = (int)pagesLong;
+
+                var len = (pages + 7) / 8;
+                if (_cached.Length < len)
+                    return false;
+
+                var last = pages / 8;
+                var fract = pages & 7;
+                for (var i = 0; i < last; i++)
+                    if (_cached[i] != 0xff)
+                        return false;
+
+                if (fract == 0)
                 {
-                    if (offset < r.Offset)
-                        yield return Range.FromOffsets(offset, r.Offset);
-                    offset = r.End;
+                    _isFullyCached = true;
+                    return true;
                 }
-                if (offset < Length)
-                    yield return Range.FromOffsets(offset, Length);
+
+                if (_cached[last] == ((0xff00 >> fract) & 0xff))
+                {
+                    _isFullyCached = true;
+                    return true;
+                }
+
+                return false;
             }
         }
 
-        /// <summary>
-        /// Cache cover ratio so far. 1.0 for 100%.
-        /// </summary>
-        public float CoveredRatio
+        bool isPageCached(int page)
         {
-            get
-            {
-                if (Length == 0)
-                    return 1f;
-                return (float)(RangesCached.Aggregate(.0, (a, b) => a + b.Length) / Length);
-            }
+            if (_isFullyCached)
+                return true;
+            if (_cached == null)
+                return false;
+
+            var i = page / 8;
+            var mask = 0x80 >> (page & 7);
+
+            if (i >= _cached.Length)
+                return false;
+            return (_cached[i] & mask) == mask;
+        }
+
+        void setPageCached(int page)
+        {
+            var i = page / 8;
+            var mask = (byte)(0x80 >> (page & 7));
+
+            if (_cached == null || i >= _cached.Length)
+                Array.Resize(ref _cached, i + 1);
+
+            _cached[i] |= mask;
         }
 
         /// <summary>
@@ -176,182 +232,89 @@ namespace HttpStream
         public abstract long GetStreamLengthOrDefault(long defValue);
 
         /// <summary>
+        /// Whether the stream length is available or not.
+        /// </summary>
+        public abstract bool IsStreamLengthAvailable { get; protected set; }
+
+        /// <summary>
         /// Load a portion of file and write to a stream.
         /// </summary>
         /// <param name="stream">Stream to write on.</param>
-        /// <param name="rangeToLoad">Byte range in the file to load.</param>
+        /// <param name="offset">The offset of the data to download.</param>
+        /// <param name="length">The length of the data to download.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The byte range actually loaded. It may be larger than the requested range.</returns>
-        protected abstract Task<Range> LoadAsync(Stream stream, Range rangeToLoad, CancellationToken cancellationToken);
+        protected abstract Task<int> LoadAsync(Stream stream, int offset, int length, CancellationToken cancellationToken);
 
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             if (count == 0)
                 return 0;
 
-            //Debug.WriteLine(string.Format("Read: Position={0}, Size={1}", Position, count));
+            //Debug.WriteLine(string.Format("ReadAsync: Position={0}, Size={1} of {2}", Position, count, GetStreamLengthOrDefault(0)));
 
-            var end = Position + count;
-
-            var idx = _ranges.BinarySearch(new Range(Position, count));
-            if (idx <= 0)
-                idx = ~idx;
-
-            var firstRange = idx;
-            if (idx > 0)
-            {
-                var prev = _ranges[idx - 1];
-                if (prev.Offset <= Position && Position < prev.End)
-                {
-                    firstRange = --idx;
-                }
-            }
-
-            int allBytes2Read = count;
             int bytesRead = 0;
-            for (;;)
+
+            var pos = Position;
+            var end = pos + count;
+
+            var firstPage = (int)(pos / _cachePageSize);
+            var lastPage = (int)((end - 1) / _cachePageSize);
+
+            for (int i = firstPage; i <= lastPage;)
             {
-                if (idx == _ranges.Count)
+                int bytes2Read, pagesRead;
+                var pageOffset = (long)i * _cachePageSize;
+
+                if (!isPageCached(i))
                 {
-                    var r = await LoadAsync(_cacheStream, new Range(Position, allBytes2Read), cancellationToken);
-                    updateRenges(firstRange, r);
-                    if (!r.Contains(Position))
-                        return bytesRead;
-
-                    var bytesRemain = (int)(r.Length - (Position - r.Offset));
-                    if (bytesRemain > allBytes2Read)
-                        bytesRemain = allBytes2Read;
-
-                    _cacheStream.Position = Position;
-                    await _cacheStream.ReadAsync(buffer, offset, bytesRemain, cancellationToken);
-
-                    Position += bytesRemain;
-                    bytesRead += bytesRemain;
-                    return (int)bytesRead;
-                }
-
-                int ret, bytes2Read;
-                if (Position < _ranges[idx].Offset)
-                {
-                    bytes2Read = (int)(_ranges[idx].Offset - Position);
-                    var r = await LoadAsync(_cacheStream, new Range(Position, bytes2Read), cancellationToken);
-                    updateRenges(firstRange, r);
-                    if (r.Contains(Position))
+                    var pagesNotCached = lastPage - i + 1;
+                    for (var j = i + 1; j <= lastPage; j++)
                     {
-                        _cacheStream.Position = Position;
-                        if (bytes2Read > allBytes2Read)
-                            bytes2Read = allBytes2Read;
-                        ret = await _cacheStream.ReadAsync(buffer, offset, bytes2Read, cancellationToken);
-                    }
-                    else
-                    {
-                        ret = 0;
-                    }
-                }
-                else
-                {
-                    if (end < _ranges[idx].End)
-                        bytes2Read = (int)(end - Position);
-                    else
-                        bytes2Read = (int)(_ranges[idx].End - Position);
-
-                    _cacheStream.Position = Position;
-                    ret = await _cacheStream.ReadAsync(buffer, offset, bytes2Read, cancellationToken);
-                    idx++;
-                }
-
-                Position += ret;
-                bytesRead += ret;
-                offset += ret;
-                allBytes2Read -= ret;
-                if (ret < bytes2Read || allBytes2Read == 0)
-                    return bytesRead;
-            }
-        }
-
-        void updateRenges(int idx, Range r)
-        {
-            if (r.Length == 0)
-                return;
-
-            var cur = idx >= 0 && idx < _ranges.Count ? _ranges[idx] : null;
-            var prev = idx - 1 >= 0 && idx - 1 < _ranges.Count ? _ranges[idx - 1] : null;
-            if (idx == _ranges.Count)
-            {
-                if (prev != null && _ranges.Count != 0 && prev.End == r.Offset)
-                {
-                    prev.Length = r.End - prev.Offset;
-                    return;
-                }
-                _ranges.Add(r);
-                return;
-            }
-
-            var count = _ranges.Count;
-            if (prev != null && prev.End == r.Offset)
-            {
-                if (r.End < cur.Offset)
-                {
-                    // PPPPRRRR CCCC
-                    prev.Length = r.End - prev.Offset;
-                    return;
-                }
-                else if (r.End == cur.Offset)
-                {
-                    // PPPPRRRRCCCC
-                    prev.Length = cur.End - prev.Offset;
-                    _ranges.RemoveAt(idx);
-                    return;
-                }
-                else
-                {
-                    var end = r.End;
-                    int i;
-                    for(i = idx + 1; i < count; i++)
-                        if (_ranges[i].End > r.End)
+                        if (isPageCached(j))
+                        {
+                            pagesNotCached = j - i;
                             break;
-                    if (i == count)
-                        _ranges.RemoveRange(idx, count - idx);
-                    else
-                    {
-                        end = _ranges[i].End;
-                        _ranges.RemoveRange(idx, i - idx + 1);
+                        }
                     }
-                    prev.Length = end - prev.Offset;
-                    return;
-                }
-            }
 
-            if (r.End < cur.Offset)
-            {
-                _ranges.Insert(idx, r);
-                return;
-            }
-            else if (r.End <= cur.End)
-            {
-                var offset = (r.Offset < cur.Offset) ? r.Offset : cur.Offset;
-                cur.Length = cur.End - offset;
-                cur.Offset = offset;
-                return;
-            }
-            else // if (r.End > cur.End)
-            {
-                var offset = (r.Offset < cur.Offset) ? r.Offset : cur.Offset;
-                var end = r.End;
-                int i;
-                for(i = idx + 1; i < count; i++)
-                    if (_ranges[i].End > r.End)
-                        break;
-                if (i == count)
-                    _ranges.RemoveRange(idx + 1, count - idx - 1);
+                    //Debug.WriteLine(string.Format("ReadAsync: Page {0}-{1}: Not Cached.", i, i + pagesNotCached - 1));
+                    var offsetToLoad = i * _cachePageSize;
+                    var sizeToLoad = pagesNotCached * _cachePageSize;
+
+                    var sizeLoaded = await LoadAsync(_cacheStream, offsetToLoad, sizeToLoad, cancellationToken).ConfigureAwait(false);
+                    if (offsetToLoad + sizeLoaded != GetStreamLengthOrDefault(long.MaxValue) && sizeToLoad != sizeLoaded)
+                        throw new IOException(string.Format("Could not read all of the requested bytes: {0}/{1}", sizeLoaded, sizeToLoad));
+
+                    for (var j = 0; j < pagesNotCached; j++)
+                        setPageCached(i + j);
+
+                    var e = Math.Min(pageOffset + sizeLoaded, end);
+                    bytes2Read = (int)(e - pos);
+                    pagesRead = pagesNotCached;
+                }
                 else
                 {
-                    end = _ranges[i].End;
-                    _ranges.RemoveRange(idx + 1, i - idx + 1 - 1);
+                    //Debug.WriteLine(string.Format("ReadAsync: Page {0}: Cached.", i));
+
+                    var e = Math.Min(pageOffset + _cachePageSize, end);
+                    bytes2Read = (int)(e - pos);
+                    pagesRead = 1;
                 }
-                _ranges[idx].Offset = offset;
-                _ranges[idx].Length = end - offset;
+
+                _cacheStream.Position = pos;
+                var bytes = await _cacheStream.ReadAsync(buffer, offset, bytes2Read, cancellationToken).ConfigureAwait(false);
+                if (bytes != bytes2Read)
+                    throw new IOException(string.Format("Could not read all of the requested bytes from the cache: {0}/{1}", bytes, bytes2Read));
+
+                pos += bytes2Read;
+                offset += bytes2Read;
+                bytesRead += bytes2Read;
+                i += pagesRead;
             }
+
+            Position = pos;
+            return bytesRead;
         }
 
         public override Task FlushAsync(System.Threading.CancellationToken cancellationToken)
