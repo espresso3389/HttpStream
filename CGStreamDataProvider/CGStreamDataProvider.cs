@@ -9,7 +9,7 @@ using System.Text;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-namespace AcpViewer.iOS
+namespace HttpStream
 {
     /// <summary>
     /// Creates <see cref="CGDataProvider"/> from <see cref="Stream"/>.
@@ -32,9 +32,10 @@ namespace AcpViewer.iOS
         /// </summary>
         /// <param name="stream">Original data stream.</param>
         /// <param name="ownStream"><c>true</c> to instruct <see cref="CGDataProvider"/> object to close the stream on its cleanup.</param>
+        /// <param name="getStreamSizeAsync">A function to get the stream size asynchronously. If it is <c>null</c>, the stream size will be obtained synchronously.</param>
         /// <param name="bufferingSize">Buffering size.</param>
         /// <returns></returns>
-        public static async Task<CGDataProvider> CreateWithStreamAsync(Stream stream, bool ownStream, Func<Task<long>> getFileSizeAsync, int bufferingSize = 1024 * 32)
+        public static async Task<CGDataProvider> CreateWithStreamAsync(Stream stream, bool ownStream, Func<Task<long>> getStreamSizeAsync, int bufferingSize = 1024 * 32)
         {
             if (stream == null)
                 throw new ArgumentNullException("stream must not be null.", "stream");
@@ -48,9 +49,9 @@ namespace AcpViewer.iOS
             };
 
 			long streamLength = 0;
-			if (getFileSizeAsync != null)
+			if (getStreamSizeAsync != null)
 			{
-				streamLength = await getFileSizeAsync();
+				streamLength = await getStreamSizeAsync();
 			}
 			else
 			{
