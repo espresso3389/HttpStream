@@ -78,12 +78,12 @@ namespace HttpStream
         {
             try
             {
-                Debug.WriteLine("CacheStream.Read: Waiting...");
+                //Debug.WriteLine("CacheStream.Read: Waiting...");
                 return ReadAsync(buffer, offset, count).Result;
             }
             finally
             {
-                Debug.WriteLine("CacheStream.Read: OK.");
+                //Debug.WriteLine("CacheStream.Read: OK.");
             }
         }
 
@@ -126,12 +126,12 @@ namespace HttpStream
             {
                 try
                 {
-                    Debug.WriteLine("CacheStream.Length: Waiting for GetLengthAsync...");
+                    //Debug.WriteLine("CacheStream.Length: Waiting for GetLengthAsync...");
                     return GetLengthAsync().Result;
                 }
                 finally
                 {
-                    Debug.WriteLine("CacheStream.Length: OK.");
+                    //Debug.WriteLine("CacheStream.Length: OK.");
                 }
             }
         }

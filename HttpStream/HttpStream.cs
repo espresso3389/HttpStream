@@ -265,8 +265,15 @@ namespace HttpStream
 
         static DateTime parseDateTime(string dateTime)
         {
+            if (dateTime.EndsWith(" UTC"))
+            {
+                return DateTime.ParseExact(dateTime,
+                    "ddd, dd MMM yyyy HH:mm:ss 'UTC'",
+                    CultureInfo.InvariantCulture.DateTimeFormat,
+                    DateTimeStyles.AssumeUniversal);
+            }
             return DateTime.ParseExact(dateTime,
-                "ddd, dd MMM yyyy HH:mm:ss 'UTC'",
+                "ddd, dd MMM yyyy HH:mm:ss 'GMT'",
                 CultureInfo.InvariantCulture.DateTimeFormat,
                 DateTimeStyles.AssumeUniversal);
         }
