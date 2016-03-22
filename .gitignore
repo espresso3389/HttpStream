@@ -5,8 +5,7 @@ packages/
 *.suo
 *.user
 dist/
-specs/~$mlspec.docx
 Thumbs.db
 *.rej
 *.bak
-._build.bat
+
