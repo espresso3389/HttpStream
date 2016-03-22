@@ -164,7 +164,9 @@ namespace HttpStream
             if (!res.IsSuccessStatusCode)
                 throw new Exception(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, offset, endPos - 1));
             else
-                Debug.WriteLine(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, offset, endPos - 1));
+            {
+                //Debug.WriteLine(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, offset, endPos - 1));
+            }
 
             // retrieve the resulting Content-Range
             bool getRanges = true;
@@ -185,11 +187,11 @@ namespace HttpStream
                     {
                         StreamLength = long.Parse(sz);
                         IsStreamLengthAvailable = true;
-                        Debug.WriteLine(string.Format("File size detected: {0}", StreamLength));
+                        //Debug.WriteLine(string.Format("File size detected: {0}", StreamLength));
                     }
                 }
 
-                Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, StreamLength));
+                //Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, StreamLength));
             }))
             {
                 // In some case, there's no Content-Range but Content-Length
@@ -200,20 +202,20 @@ namespace HttpStream
                 {
                     StreamLength = end = size = long.Parse(v);
                     IsStreamLengthAvailable = true;
-                    Debug.WriteLine(string.Format("File size detected: {0}", StreamLength));
+                    //Debug.WriteLine(string.Format("File size detected: {0}", StreamLength));
                 });
             }
 
             actionIfFound(res, "Content-Type", v =>
             {
                 ContentType = v;
-                Debug.WriteLine("Content-Type: " + ContentType);
+                //Debug.WriteLine("Content-Type: " + ContentType);
             });
 
             actionIfFound(res, "Last-Modified", v =>
             {
                 LastModified = parseDateTime(v);
-                Debug.WriteLine("Last-Modified: " + LastModified.ToString("O"));
+                //Debug.WriteLine("Last-Modified: " + LastModified.ToString("O"));
             });
 
             InspectionFinished = true;
