@@ -11,7 +11,7 @@ if ERRORLEVEL 1 goto :errend
 
 call :set_build
 
-set ASMVER=1.0.%REV%.%BUILD%
+set ASMVER=2.0.%REV%.%BUILD%
 echo Version: %ASMVER% (Rev=%REV%, Build=%BUILD%, Commit=%COMMIT%)
 
 call :generate_asminfo Properties
