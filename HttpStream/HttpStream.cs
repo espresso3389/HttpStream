@@ -15,7 +15,7 @@ namespace HttpStream
     /// <summary>
     /// Implements randomly accessible <see cref="Stream"/> on HTTP 1.1 transport.
     /// </summary>
-	public class HttpStream : CacheStream
+    public class HttpStream : CacheStream
     {
         Uri _uri;
         HttpClient _httpClient;
@@ -32,11 +32,11 @@ namespace HttpStream
         /// <summary>
         /// Whether file properties, like file size and last modified time is correctly inspected.
         /// </summary>
-		public bool InspectionFinished { get; private set; }
+        public bool InspectionFinished { get; private set; }
         /// <summary>
         /// When the file is last modified.
         /// </summary>
-		public DateTime LastModified { get; private set; }
+        public DateTime LastModified { get; private set; }
         /// <summary>
         /// Content type of the file.
         /// </summary>
@@ -44,7 +44,7 @@ namespace HttpStream
         /// <summary>
         /// Buffering size for downloading the file.
         /// </summary>
-		public int BufferingSize
+        public int BufferingSize
         {
             get { return _bufferingSize; }
             set
@@ -77,7 +77,7 @@ namespace HttpStream
         /// <param name="uri">URI of the file to download.</param>
         /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
-		public HttpStream(Uri uri, Stream cache, bool ownStream) : this(uri, cache, ownStream, 32 * 1024, null)
+        public HttpStream(Uri uri, Stream cache, bool ownStream) : this(uri, cache, ownStream, 32 * 1024, null)
         {
         }
 
@@ -131,10 +131,7 @@ namespace HttpStream
         /// <seealso cref="StreamLength"/>
         /// <seealso cref="FileSizeAvailable"/>
         /// <returns>The file size.</returns>
-		public override long GetStreamLengthOrDefault(long defValue)
-        {
-            return IsStreamLengthAvailable ? StreamLength : defValue;
-        }
+        public override long GetStreamLengthOrDefault(long defValue) => IsStreamLengthAvailable ? StreamLength : defValue;
 
         public override bool IsStreamLengthAvailable { get; protected set; }
 
