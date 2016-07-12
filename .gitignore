@@ -8,4 +8,5 @@ dist/
 Thumbs.db
 *.rej
 *.bak
-
+*.nupkg
+project.lock.json
