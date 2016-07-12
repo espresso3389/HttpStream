@@ -10,3 +10,5 @@ Thumbs.db
 *.bak
 *.nupkg
 project.lock.json
+
+HttpStream/Properties/AssemblyInfo.cs

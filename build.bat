@@ -1,6 +1,8 @@
 @echo off
 setlocal ENABLEDELAYEDEXPANSION
 
+set CURDIR=%~dp0
+
 set COMPILER=vc140
 set CONFIG=Release
 
@@ -14,7 +16,14 @@ call :find_exe nuget
 if ERRORLEVEL 1 goto errend
 
 nuget restore
-msbuild HttpStream.sln /p:Configuration=%CONFIG%
+pushd HttpStream
+msbuild HttpStream.csproj /p:Configuration=%CONFIG%
+popd
+
+mkdir %CURDIR%\dist
+pushd %CURDIR%\dist
+%CURDIR%\nuget pack %CURDIR%\\HttpStream\HttpStream.csproj -Prop Configuration=%CONFIG% -symbols
+popd
 
 goto :EOF
 

@@ -55,9 +55,6 @@
   <Target Name="GenerateAssemblyInfo" Outputs="Properties\AssemblyInfo.cs">
     <Exec Command="update_version.bat" ConsoleToMSBuild="true" />
   </Target>
-  <Target Name="AfterBuild">
-    <Exec Command="$(SolutionDir)nuget pack $(ProjectFileName) -Prop Configuration=$(Configuration) -symbols" />
-  </Target>
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
