@@ -36,10 +36,12 @@ So you can optionally specify any seekable `Stream` to override the default beha
 ### HttpStream
 `HttpStream` is an implementation of `CacheStream`, which utilize `HttpClient` to fetch the internet resource. If you use some local file for the cache stream, you can of course download the file on the local file.
 ### Simple Usage
-The following sample 
 ```cs
+// cache stream
 var fs = File.Create("cache.jpg");
 var uri = new Uri(@"https://dl.dropboxusercontent.com/u/150906/2007-01-28%2006.04.05.JPG");
+
+// The third parameter, true indicates that the httpStream will close the cache stream.
 var httpStream = new Espresso3389.HttpStream.HttpStream(uri, fs, true);
 
 // RangeDownloaded is called on every incremental download
