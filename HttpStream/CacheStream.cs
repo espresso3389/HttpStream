@@ -163,14 +163,7 @@ namespace HttpStream
                 if (_cached == null)
                     return false;
 
-                var size = GetStreamLengthOrDefault(long.MaxValue);
-                var pagesLong = (size + _cachePageSize - 1) / _cachePageSize;
-
-                // PageSize=32K case, the maximum is 128TB (= 4GB * 32K).
-                if (pagesLong > int.MaxValue)
-                    throw new InvalidDataException("The file size is too large.");
-
-                var pages = (int)pagesLong;
+                var pages = getNumberOfPages();
 
                 var len = (pages + 7) / 8;
                 if (_cached.Length < len)
@@ -196,6 +189,57 @@ namespace HttpStream
 
                 return false;
             }
+        }
+
+        /// <summary>
+        /// The ratio of the file is actually cached. 1.0 if the file is fully cached.
+        /// </summary>
+        public double CachedRatio
+        {
+            get
+            {
+                if (_isFullyCached)
+                    return 1.0;
+                if (_cached == null)
+                    return 0.0;
+
+                int count = 0;
+                for (var i = 0; i < _cached.Length; i++)
+                    count += BITS_COUNT_TABLE[_cached[i]];
+
+                return (double)count / getNumberOfPages();
+            }
+        }
+
+        static int[] BITS_COUNT_TABLE = {
+            0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+            1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+            1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+            2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+            1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+            2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+            2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+            3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+            1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+            2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+            2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+            3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+            2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+            3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+            3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+            4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
+        };
+
+        int getNumberOfPages()
+        {
+            var size = GetStreamLengthOrDefault(long.MaxValue);
+            var pagesLong = (size + _cachePageSize - 1) / _cachePageSize;
+
+            // PageSize=32K case, the maximum is 128TB (= 4GB * 32K).
+            if (pagesLong > int.MaxValue)
+                throw new InvalidDataException("The file size is too large.");
+
+            return(int)pagesLong;
         }
 
         bool isPageCached(int page)

@@ -39,7 +39,7 @@ namespace Test
             httpStream.RangeDownloaded += (sender, e) =>
             {
                 progBar.Max = 1000;
-                progBar.Progress = (int)(1000 * httpStream.CoveredRatio);
+                progBar.Progress = (int)(1000 * httpStream.CachedRatio);
             };
 
             var bmp = await BitmapFactory.DecodeStreamAsync(httpStream);
