@@ -4,6 +4,14 @@ This C# project implements randomly accessible stream on HTTP 1.1 transport.
 Typically, HttpClient provides almost all HTTP features but it just provides us with a way to download a file completely.
 The implementation take advantage of HTTP 1.1 range access or on fallback case, it uses HTTP/1.0 sequential download anyway.
 
+## NuGet Package
+A prebuilt NuGet package is available: [Espresso3389.HttpStream](https://www.nuget.org/packages/Espresso3389.HttpStream/).
+
+To install espresso3389.HttpStream, run the following command in the Package Manager Console:
+```
+PM> Install-Package Espresso3389.HttpStream
+```
+
 ## Supported Platforms
 This module is built against .NET Platform Standard 1.1 (`netstandard1.1`) and it's compatible with the following platforms:
 
