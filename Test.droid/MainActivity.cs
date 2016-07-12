@@ -35,7 +35,7 @@ namespace Test
             var progBar = FindViewById<ProgressBar>(Resource.Id.progressBar1);
 
             var uri = new Uri(@"https://dl.dropboxusercontent.com/u/150906/trc_m.jpg");
-            var httpStream = new HttpStream.HttpStream(uri, fs, true);
+            var httpStream = new Espresso3389.HttpStream.HttpStream(uri, fs, true);
             httpStream.RangeDownloaded += (sender, e) =>
             {
                 progBar.Max = 1000;

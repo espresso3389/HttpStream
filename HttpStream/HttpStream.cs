@@ -10,7 +10,7 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace HttpStream
+namespace Espresso3389.HttpStream
 {
     /// <summary>
     /// Implements randomly accessible <see cref="Stream"/> on HTTP 1.1 transport.

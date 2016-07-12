@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>$author$</authors>
+    <owners>$author$</owners>
+    <licenseUrl>https://github.com/espresso3389/HttpStream/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/espresso3389/HttpStream</projectUrl>
+    <iconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>$description$</description>
+    <releaseNotes>First NuGetized version.</releaseNotes>
+    <copyright>Copyright 2016 espresso3389 (Takashi Kawasaki)</copyright>
+    <tags>HTTP, Stream, Random Access, Seekable, HTTP/1.1, Range Access</tags>
+    <dependencies>
+      <dependency id="System.Net.Http" version="[2.2.29,]"></dependency>
+    </dependencies>
+  </metadata>
+</package>

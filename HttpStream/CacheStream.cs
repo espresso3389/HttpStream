@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Diagnostics;
 
-namespace HttpStream
+namespace Espresso3389.HttpStream
 {
     /// <summary>
     /// A <see cref="Stream"/> implementation, which provides caching mechanism for slow streams.
