@@ -24,17 +24,6 @@ This module is built against .NET Platform Standard 1.1 (`netstandard1.1`) and i
 
 For more information, see the illustration on [Mapping the .NET Platform Standard to platforms - .NET Platform Standard](https://github.com/dotnet/corefx/blob/master/Documentation/architecture/net-platform-standard.md#mapping-the-net-platform-standard-to-platforms).
 
-## Architecture
-### Introduction
-This library defines two important classes, `CacheStream` and `HttpStream`. `CacheStream` implements a stream wrapper, which supports caching feature on non-seekable `Stream`.
-With the class, you can virtually realize random seek on the `Stream`. The trick is easy, if you jump to a position, the wrapper internally cache all the bytes til the specified position.
-If you seek-back to any position before the last seeked position, it uses the cached bytes.
-As you can see, the trick costs the time to read all the bytes before the specified position.
-### Caching
-By default, `CacheStream` uses `MemoryStream` to cache the stream bytes. But it may consumes the memory if the file to download is large.
-So you can optionally specify any seekable `Stream` to override the default behavior.
-### HttpStream
-`HttpStream` is an implementation of `CacheStream`, which utilize `HttpClient` to fetch the internet resource. If you use some local file for the cache stream, you can of course download the file on the local file.
 ### Simple Usage
 ```cs
 // cache stream
