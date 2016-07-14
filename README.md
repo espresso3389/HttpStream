@@ -42,3 +42,6 @@ httpStream.RangeDownloaded += (sender, e) =>
 // The following code actually invokes download whole the file
 var bmp = await BitmapFactory.DecodeStreamAsync(httpStream);
 ```
+
+## License
+The codes/binaries are licensed under [MIT License](https://github.com/espresso3389/HttpStream/blob/master/LICENSE).
