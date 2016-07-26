@@ -301,6 +301,7 @@ namespace Espresso3389.HttpStream
 
             var firstPage = (int)(pos / _cachePageSize);
             var lastPage = (int)((end - 1) / _cachePageSize);
+            var fileSize = GetStreamLengthOrDefault(long.MaxValue);
 
             for (int i = firstPage; i <= lastPage;)
             {
@@ -323,22 +324,13 @@ namespace Espresso3389.HttpStream
                     var sizeToLoad = pagesNotCached * _cachePageSize;
 
                     var sizeLoaded = await LoadAsync(_cacheStream, offsetToLoad, sizeToLoad, cancellationToken).ConfigureAwait(false);
-                    var fileSize = GetStreamLengthOrDefault(long.MaxValue);
-                    if (fileSize < long.MaxValue)
+                    if (fileSize < long.MaxValue && offsetToLoad + sizeToLoad <= fileSize && sizeLoaded < sizeToLoad)
                     {
-                        if (offsetToLoad + sizeToLoad <= fileSize && sizeLoaded < sizeToLoad)
-                        {
-                            // the block tried to read is a part of the actual file (we know the file size!)
-                            // but we cannot read the block :(
-                            throw new IOException(
-                                string.Format("Could not read all of the requested bytes: offset={0}, filesize={1}, remain={3}, requested={3}, read={4}",
-                                    offsetToLoad, fileSize, fileSize - offsetToLoad, sizeToLoad, sizeLoaded));
-                        }
-                    }
-                    else
-                    {
-                        // we cannot know the actual file size so we cannot see whether this is a real end of the file or not.
-                        // anyway, we don't/can't read any more; no exception will be thrown.
+                        // the block tried to read is a part of the actual file (we know the file size!)
+                        // but we cannot read the block :(
+                        throw new IOException(
+                            string.Format("Could not read all of the requested bytes: offset={0}, filesize={1}, remain={3}, requested={3}, read={4}",
+                                offsetToLoad, fileSize, fileSize - offsetToLoad, sizeToLoad, sizeLoaded));
                     }
 
                     for (var j = 0; j < pagesNotCached; j++)
@@ -357,8 +349,14 @@ namespace Espresso3389.HttpStream
 
                 _cacheStream.Position = pos;
                 var bytes = await _cacheStream.ReadAsync(buffer, offset, bytes2Read, cancellationToken).ConfigureAwait(false);
-                if (bytes != bytes2Read)
-                    throw new IOException(string.Format("Could not read all of the requested bytes from the cache: {0} of {1}", bytes, bytes2Read));
+                if (fileSize < long.MaxValue && offset + bytes2Read <= fileSize && bytes < bytes2Read)
+                {
+                    // the block tried to read is a part of the actual file (we know the file size!)
+                    // but we cannot read the block :(
+                    throw new IOException(
+                        string.Format("Could not read all of the requested bytes from the cache: offset={0}, filesize={1}, remain={3}, requested={3}, read={4}",
+                            offset, fileSize, fileSize - offset, bytes, bytes2Read));
+                }
 
                 pos += bytes2Read;
                 offset += bytes2Read;
