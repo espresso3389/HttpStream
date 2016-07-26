@@ -295,10 +295,7 @@ namespace Espresso3389.HttpStream
             if (count == 0)
                 return 0;
 
-            //Debug.WriteLine(string.Format("ReadAsync: Position={0}, Size={1} of {2}", Position, count, GetStreamLengthOrDefault(0)));
-
             int bytesRead = 0;
-
             var pos = Position;
             var end = pos + count;
 
@@ -322,13 +319,27 @@ namespace Espresso3389.HttpStream
                         }
                     }
 
-                    //Debug.WriteLine(string.Format("ReadAsync: Page {0}-{1}: Not Cached.", i, i + pagesNotCached - 1));
                     var offsetToLoad = i * _cachePageSize;
                     var sizeToLoad = pagesNotCached * _cachePageSize;
 
                     var sizeLoaded = await LoadAsync(_cacheStream, offsetToLoad, sizeToLoad, cancellationToken).ConfigureAwait(false);
-                    if (offsetToLoad + sizeLoaded != GetStreamLengthOrDefault(long.MaxValue) && sizeToLoad != sizeLoaded)
-                        throw new IOException(string.Format("Could not read all of the requested bytes: {0} of {1}", sizeLoaded, sizeToLoad));
+                    var fileSize = GetStreamLengthOrDefault(long.MaxValue);
+                    if (fileSize < long.MaxValue)
+                    {
+                        if (offsetToLoad + sizeLoaded <= fileSize && sizeLoaded < sizeToLoad)
+                        {
+                            // the block tried to read is a part of the actual file (we know the file size!)
+                            // but we cannot read the block :(
+                            throw new IOException(
+                                string.Format("Could not read all of the requested bytes: {0} of {1} (offset={2}, filesize={3})",
+                                    sizeLoaded, sizeToLoad, offsetToLoad, fileSize));
+                        }
+                    }
+                    else
+                    {
+                        // we cannot know the actual file size so we cannot see whether this is a real end of the file or not.
+                        // anyway, we don't/can't read any more; no exception will be thrown.
+                    }
 
                     for (var j = 0; j < pagesNotCached; j++)
                         setPageCached(i + j);
@@ -339,8 +350,6 @@ namespace Espresso3389.HttpStream
                 }
                 else
                 {
-                    //Debug.WriteLine(string.Format("ReadAsync: Page {0}: Cached.", i));
-
                     var e = Math.Min(pageOffset + _cachePageSize, end);
                     bytes2Read = (int)(e - pos);
                     pagesRead = 1;
