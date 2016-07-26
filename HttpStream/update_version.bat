@@ -69,11 +69,15 @@ rem -------------------------------------------------------------------------
 rem set BUILD variable 
 rem -------------------------------------------------------------------------
 :set_build
-if exist ._build.bat (
-	call ._build.bat
+if exist .stamp.bat (call .stamp.bat) else (set LASTREV=0) 
+if %LASTREV% equ %REV% (
+	set /a "BUILD=BUILD+1"
+
 ) else (
 	set BUILD=0
-) 
+)
+echo set "LASTREV=%REV%" > .stamp.bat
+echo set "BUILD=%BUILD%" >> .stamp.bat
 goto :EOF
 
 rem -------------------------------------------------------------------------

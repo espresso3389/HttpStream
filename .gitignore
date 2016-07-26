@@ -12,3 +12,4 @@ Thumbs.db
 project.lock.json
 
 HttpStream/Properties/AssemblyInfo.cs
+HttpStream/.stamp.bat

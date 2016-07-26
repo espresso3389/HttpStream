@@ -56,6 +56,7 @@ if not exist %VCBAT% (
 )
 call %VCBAT% %vcarch%
 goto :EOF
+
 rem -------------------------------------------------------------------------
 :errend
 popd
