@@ -349,13 +349,13 @@ namespace Espresso3389.HttpStream
 
                 _cacheStream.Position = pos;
                 var bytes = await _cacheStream.ReadAsync(buffer, offset, bytes2Read, cancellationToken).ConfigureAwait(false);
-                if (fileSize < long.MaxValue && offset + bytes2Read <= fileSize && bytes < bytes2Read)
+                if (fileSize < long.MaxValue && pos + bytes2Read <= fileSize && bytes < bytes2Read)
                 {
                     // the block tried to read is a part of the actual file (we know the file size!)
                     // but we cannot read the block :(
                     throw new IOException(
-                        string.Format("Could not read all of the requested bytes from the cache: offset={0}, filesize={1}, remain={3}, requested={3}, read={4}",
-                            offset, fileSize, fileSize - offset, bytes, bytes2Read));
+                        string.Format("Could not read all of the requested bytes from the cache: offset={0}, filesize={1}, remain={2}, requested={3}, read={4}",
+                            pos, fileSize, fileSize - pos, bytes, bytes2Read));
                 }
 
                 pos += bytes2Read;
