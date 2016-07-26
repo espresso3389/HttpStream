@@ -20,6 +20,7 @@ pushd HttpStream
 msbuild HttpStream.csproj /p:Configuration=%CONFIG%
 popd
 
+rmdir /S /Q %CURDIR%\dist
 mkdir %CURDIR%\dist
 pushd %CURDIR%\dist
 %CURDIR%\nuget pack %CURDIR%\\HttpStream\HttpStream.csproj -Prop Configuration=%CONFIG% -symbols
