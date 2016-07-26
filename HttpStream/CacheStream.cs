@@ -326,13 +326,13 @@ namespace Espresso3389.HttpStream
                     var fileSize = GetStreamLengthOrDefault(long.MaxValue);
                     if (fileSize < long.MaxValue)
                     {
-                        if (offsetToLoad + sizeLoaded <= fileSize && sizeLoaded < sizeToLoad)
+                        if (offsetToLoad + sizeToLoad <= fileSize && sizeLoaded < sizeToLoad)
                         {
                             // the block tried to read is a part of the actual file (we know the file size!)
                             // but we cannot read the block :(
                             throw new IOException(
-                                string.Format("Could not read all of the requested bytes: {0} of {1} (offset={2}, filesize={3})",
-                                    sizeLoaded, sizeToLoad, offsetToLoad, fileSize));
+                                string.Format("Could not read all of the requested bytes: offset={0}, filesize={1}, remain={3}, requested={3}, read={4}",
+                                    offsetToLoad, fileSize, fileSize - offsetToLoad, sizeToLoad, sizeLoaded));
                         }
                     }
                     else
