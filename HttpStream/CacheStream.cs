@@ -355,7 +355,7 @@ namespace Espresso3389.HttpStream
                     // but we cannot read the block :(
                     throw new IOException(
                         string.Format("Could not read all of the requested bytes from the cache: offset={0}, filesize={1}, remain={2}, requested={3}, read={4}",
-                            pos, fileSize, fileSize - pos, bytes, bytes2Read));
+                            pos, fileSize, fileSize - pos, bytes2Read, bytes));
                 }
 
                 pos += bytes2Read;
