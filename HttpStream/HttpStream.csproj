@@ -11,5 +11,7 @@
     <PackageTags>HTTP, Stream, Random Access, Seekable, HTTP/1.1, Range Access</PackageTags>
     <PackageLicenseUrl>https://github.com/espresso3389/HttpStream/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/espresso3389/HttpStream</PackageProjectUrl>
+    <PackageReleaseNotes>$(COMMIT)</PackageReleaseNotes>
+    <RepositoryUrl>https://github.com/espresso3389/HttpStream</RepositoryUrl>
   </PropertyGroup>
 </Project>
