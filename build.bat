@@ -49,11 +49,29 @@ if /i "%PLATFORM%"=="x64" (
 	set vcarch=x86
 )
 
-set VCBAT="!VS%COMPILER:~2%COMNTOOLS!\..\..\vc\vcvarsall.bat"
-if not exist %VCBAT% (
-	echo Error: %COMPILER% is not installed.
-	exit /b 1
+set PROGFILES86=%ProgramFiles(x86)%
+set VCVER=%COMPILER:~2%
+set VS141=2017
+set VSI140=14.0
+
+set VCBAT="!VS%VCVER%COMNTOOLS!\..\..\vc\vcvarsall.bat"
+if exist %VCBAT% (
+	call %VCBAT% %vcarch%
+	goto :EOF
 )
+set VCBAT="%PROGFILES86%\Microsoft Visual Studio\Shared\!VSI%VCVER%!\VC\vcvarsall.bat"
+if exist %VCBAT% goto :exec
+set VCBAT="%PROGFILES86%\Microsoft Visual Studio\!VS%VCVER%!\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
+if exist %VCBAT% goto :exec
+set VCBAT="%PROGFILES86%\Microsoft Visual Studio\!VS%VCVER%!\Professional\VC\Auxiliary\Build\vcvarsall.bat"
+if exist %VCBAT% goto :exec
+set VCBAT="%PROGFILES86%\Microsoft Visual Studio\!VS%VCVER%!\Community\VC\Auxiliary\Build\vcvarsall.bat"
+if exist %VCBAT% goto :exec
+echo Error: %COMPILER% is not installed.
+exit /b 1
+
+:exec
+echo %VCBAT% %vcarch%
 call %VCBAT% %vcarch%
 goto :EOF
 
