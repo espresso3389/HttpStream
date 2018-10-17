@@ -13,14 +13,15 @@ PM> Install-Package Espresso3389.HttpStream
 ```
 
 ## Supported Platforms
-This module is built against .NET Platform Standard 1.1 (`netstandard1.1`) and it's compatible with the following platforms:
+This module is built against .NET Platform Standard 1.6 (`netstandard1.6`) and it's compatible with the following platforms:
 
 - .NET Core 1.0
-- .NET Framework 4.5
-- Universal Windows Platform 10.0
-- Windows 8.0
-- Windows Phone 8.1
-- Mono/Xamarin Platforms
+- .NET Framework 4.6.1
+- Universal Windows Platform 10.0.16299
+- Mono 4.6
+- Xamarin.iOS 10.0
+- Xamarin.Mac 3.0
+- Xamarin.Android 7.0
 
 For more information, see the illustration on [Mapping the .NET Platform Standard to platforms - .NET Platform Standard](https://github.com/dotnet/corefx/blob/master/Documentation/architecture/net-platform-standard.md#mapping-the-net-platform-standard-to-platforms).
 
