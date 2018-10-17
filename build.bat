@@ -3,8 +3,9 @@ setlocal ENABLEDELAYEDEXPANSION
 
 set CURDIR=%~dp0
 
-set COMPILER=vc140
+set COMPILER=vc141
 set CONFIG=Release
+set "PLATFORM=Any CPU"
 
 call :call_vcenv_bat
 if ERRORLEVEL 1 goto errend
@@ -15,15 +16,26 @@ if ERRORLEVEL 1 goto errend
 call :find_exe nuget
 if ERRORLEVEL 1 goto errend
 
+
+call :set_revision
+if ERRORLEVEL 1 goto :errend
+call :set_commitid
+if ERRORLEVEL 1 goto :errend
+
+call :set_build
+
+set ASMVER=2.0.%REV%.%BUILD%
+echo Version: %ASMVER% (Rev=%REV%, Build=%BUILD%, Commit=%COMMIT%)
+
 nuget restore
 pushd HttpStream
-msbuild HttpStream.csproj /p:Configuration=%CONFIG%
+msbuild HttpStream.csproj "/p:Configuration=%CONFIG%" "/p:Platform=%PLATFORM%" "/p:ASMVER=%ASMVER%" "/p:COMMIT=%COMMIT%"
 popd
 
 rmdir /S /Q %CURDIR%\dist
 mkdir %CURDIR%\dist
 pushd %CURDIR%\dist
-%CURDIR%\nuget pack %CURDIR%\\HttpStream\HttpStream.csproj -Prop Configuration=%CONFIG% -symbols
+%CURDIR%\nuget pack %CURDIR%\\HttpStream\HttpStream.csproj -Prop "Configuration=%CONFIG%" -Prop "Platform=%PLATFORM%" -Prop "ASMVER=%ASMVER%" -Prop "COMMIT=%COMMIT%" -symbols
 popd
 
 goto :EOF
@@ -73,6 +85,44 @@ exit /b 1
 :exec
 echo %VCBAT% %vcarch%
 call %VCBAT% %vcarch%
+goto :EOF
+
+rem -------------------------------------------------------------------------
+rem Set REV environment variable using git's commit count.
+rem -------------------------------------------------------------------------
+:set_revision
+if NOT "%FORCE_REV%"=="" (
+	set REV=%FORCE_REV%
+	goto :EOF
+)
+for /f %%c in ('git log --oneline 2^>NUL ^| find /c /v ""') do set REV=%%c
+if "%REV%"=="" (
+	echo Could not determine source revision.
+	exit /b 1
+)
+goto :EOF
+
+rem -------------------------------------------------------------------------
+rem Set COMMIT environment variable using git's commit count.
+rem -------------------------------------------------------------------------
+:set_commitid
+set COMMIT=unknown
+for /f %%c in ('git log --oneline -1 2^>NUL') do set COMMIT=%%c
+goto :EOF
+
+rem -------------------------------------------------------------------------
+rem set BUILD variable
+rem -------------------------------------------------------------------------
+:set_build
+if exist .stamp.bat (call .stamp.bat) else (set LASTREV=0)
+if %LASTREV% equ %REV% (
+	set /a "BUILD=BUILD+1"
+
+) else (
+	set BUILD=0
+)
+echo set "LASTREV=%REV%" > .stamp.bat
+echo set "BUILD=%BUILD%" >> .stamp.bat
 goto :EOF
 
 rem -------------------------------------------------------------------------
