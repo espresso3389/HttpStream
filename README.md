@@ -32,7 +32,8 @@ var fs = File.Create("cache.jpg");
 
 // The third parameter, true indicates that the httpStream will close the cache stream.
 var uri = new Uri(@"https://dl.dropboxusercontent.com/u/150906/2007-01-28%2006.04.05.JPG");
-var httpStream = new Espresso3389.HttpStream.HttpStream(uri, fs, true);
+var cacheSize = 1024 * 64;
+var httpStream = new Espresso3389.HttpStream.HttpStream(uri, fs, true, cacheSize, null);
 
 // RangeDownloaded is called on every incremental download
 httpStream.RangeDownloaded += (sender, e) =>
@@ -41,7 +42,8 @@ httpStream.RangeDownloaded += (sender, e) =>
 };
 
 // The following code actually invokes download whole the file
-var bmp = await BitmapFactory.DecodeStreamAsync(httpStream);
+// You can use BufferedStream to improve I/O performance.
+var bmp = await BitmapFactory.DecodeStreamAsync(new BufferedStream(httpStream, cacheSize));
 ```
 
 ## License
