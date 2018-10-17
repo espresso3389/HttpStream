@@ -1,0 +1,6 @@
+*       text=auto
+/build  text eol=lf
+*.cs    text eof=lf
+*.sh    text eol=lf
+*.bat   text eol=crlf
+*.plist text eof=lf

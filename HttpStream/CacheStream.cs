@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -298,10 +298,12 @@ namespace Espresso3389.HttpStream
             int bytesRead = 0;
             var pos = Position;
             var end = pos + count;
+            var fileSize = GetStreamLengthOrDefault(long.MaxValue);
+            if (end > fileSize)
+                end = fileSize;
 
             var firstPage = (int)(pos / _cachePageSize);
             var lastPage = (int)((end - 1) / _cachePageSize);
-            var fileSize = GetStreamLengthOrDefault(long.MaxValue);
 
             for (int i = firstPage; i <= lastPage;)
             {
