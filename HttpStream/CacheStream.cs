@@ -135,13 +135,15 @@ namespace Espresso3389.HttpStream
                 }
             }
         }
-
+        private bool lengthFlag = false;
         public async Task<long> GetLengthAsync()
         {
             var length = GetStreamLengthOrDefault(long.MaxValue);
             if (length == long.MaxValue)
             {
+                lengthFlag=true;
                 await ReadAsync(new byte[1], 0, 1).ConfigureAwait(false);
+                lengthFlag=false;
                 length = GetStreamLengthOrDefault(long.MaxValue);
             }
             return length;
@@ -365,8 +367,8 @@ namespace Espresso3389.HttpStream
                 bytesRead += bytes2Read;
                 i += pagesRead;
             }
-
-            Position = pos;
+            if(!lengthFlag)
+                Position = pos;
             return bytesRead;
         }
 
