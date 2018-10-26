@@ -5,11 +5,11 @@ Typically, HttpClient provides almost all HTTP features but it just provides us 
 The implementation take advantage of HTTP 1.1 range access or on fallback case, it uses HTTP/1.0 sequential download anyway.
 
 ## NuGet Package
-A prebuilt NuGet package is available: [Espresso3389.HttpStream](https://www.nuget.org/packages/Espresso3389.HttpStream/).
+A prebuilt NuGet package is available: [HttpStream](https://www.nuget.org/packages/HttpStream/).
 
-To install espresso3389.HttpStream, run the following command in the Package Manager Console:
+To install HttpStream, run the following command in the Package Manager Console:
 ```
-PM> Install-Package Espresso3389.HttpStream
+PM> Install-Package HttpStream
 ```
 
 ## Supported Platforms
@@ -27,13 +27,15 @@ For more information, see the illustration on [Mapping the .NET Platform Standar
 
 ### Simple Usage
 ```cs
+using Espresso3389.HttpStream;
+
 // cache stream
 var fs = File.Create("cache.jpg");
 
 // The third parameter, true indicates that the httpStream will close the cache stream.
 var uri = new Uri(@"https://dl.dropboxusercontent.com/u/150906/2007-01-28%2006.04.05.JPG");
 var cacheSize = 1024 * 64;
-var httpStream = new Espresso3389.HttpStream.HttpStream(uri, fs, true, cacheSize, null);
+var httpStream = new HttpStream.HttpStream(uri, fs, true, cacheSize, null);
 
 // RangeDownloaded is called on every incremental download
 httpStream.RangeDownloaded += (sender, e) =>
