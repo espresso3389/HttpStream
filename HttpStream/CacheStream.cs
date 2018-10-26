@@ -141,7 +141,7 @@ namespace Espresso3389.HttpStream
             var length = GetStreamLengthOrDefault(long.MaxValue);
             if (length == long.MaxValue)
             {
-                await ReadAsync(new byte[1], 0, 1).ConfigureAwait(false);
+                await readAsync(0L, new byte[1], 0, 1, CancellationToken.None).ConfigureAwait(false);
                 length = GetStreamLengthOrDefault(long.MaxValue);
             }
             return length;
@@ -292,11 +292,18 @@ namespace Espresso3389.HttpStream
 
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
+            var bytesRead = await readAsync(Position, buffer, offset, count, cancellationToken);
+            Position += bytesRead;
+            return bytesRead;
+        }
+
+        async Task<int> readAsync(long position, byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
             if (count == 0)
                 return 0;
 
             int bytesRead = 0;
-            var pos = Position;
+            var pos = position;
             var end = pos + count;
             var fileSize = GetStreamLengthOrDefault(long.MaxValue);
             if (end > fileSize)
@@ -365,8 +372,6 @@ namespace Espresso3389.HttpStream
                 bytesRead += bytes2Read;
                 i += pagesRead;
             }
-
-            Position = pos;
             return bytesRead;
         }
 

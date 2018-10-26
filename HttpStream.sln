@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28010.2046
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HttpStream", "HttpStream\HttpStream.csproj", "{072FEEA8-897B-4C81-A82A-4D85B82B2101}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HttpStream", "HttpStream\HttpStream.csproj", "{072FEEA8-897B-4C81-A82A-4D85B82B2101}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HttpStreamTest", "HttpStreamTest\HttpStreamTest.csproj", "{1C2C22B6-C3F1-4376-90A1-46B46669BFEC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{072FEEA8-897B-4C81-A82A-4D85B82B2101}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{072FEEA8-897B-4C81-A82A-4D85B82B2101}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{072FEEA8-897B-4C81-A82A-4D85B82B2101}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C2C22B6-C3F1-4376-90A1-46B46669BFEC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C2C22B6-C3F1-4376-90A1-46B46669BFEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C2C22B6-C3F1-4376-90A1-46B46669BFEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C2C22B6-C3F1-4376-90A1-46B46669BFEC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
