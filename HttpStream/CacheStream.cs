@@ -74,18 +74,7 @@ namespace Espresso3389.HttpStream
             // Nothing to do; we only supports read accesses.
         }
 
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            try
-            {
-                //Debug.WriteLine("CacheStream.Read: Waiting...");
-                return ReadAsync(buffer, offset, count).Result;
-            }
-            finally
-            {
-                //Debug.WriteLine("CacheStream.Read: OK.");
-            }
-        }
+        public override int Read(byte[] buffer, int offset, int count) => ReadAsync(buffer, offset, count).Result;
 
         public override long Seek(long offset, SeekOrigin origin)
         {
@@ -104,37 +93,17 @@ namespace Espresso3389.HttpStream
             return Position;
         }
 
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
+        public override void SetLength(long value) => throw new NotSupportedException();
 
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
-        public override bool CanRead { get { return true; } }
+        public override bool CanRead => true;
 
-        public override bool CanSeek { get { return true; } }
+        public override bool CanSeek => true;
 
-        public override bool CanWrite { get { return false; } }
+        public override bool CanWrite => false;
 
-        public override long Length
-        {
-            get
-            {
-                try
-                {
-                    //Debug.WriteLine("CacheStream.Length: Waiting for GetLengthAsync...");
-                    return GetLengthAsync().Result;
-                }
-                finally
-                {
-                    //Debug.WriteLine("CacheStream.Length: OK.");
-                }
-            }
-        }
+        public override long Length => GetLengthAsync().Result;
 
         public async Task<long> GetLengthAsync()
         {
@@ -338,8 +307,7 @@ namespace Espresso3389.HttpStream
                         // the block tried to read is a part of the actual file (we know the file size!)
                         // but we cannot read the block :(
                         throw new IOException(
-                            string.Format("Could not read all of the requested bytes: offset={0}, filesize={1}, remain={3}, requested={3}, read={4}",
-                                offsetToLoad, fileSize, fileSize - offsetToLoad, sizeToLoad, sizeLoaded));
+                            $"Could not read all of the requested bytes: offset={offsetToLoad}, filesize={fileSize}, remain={fileSize - offsetToLoad}, requested={sizeToLoad}, read={sizeLoaded}");
                     }
 
                     for (var j = 0; j < pagesNotCached; j++)
@@ -363,8 +331,7 @@ namespace Espresso3389.HttpStream
                     // the block tried to read is a part of the actual file (we know the file size!)
                     // but we cannot read the block :(
                     throw new IOException(
-                        string.Format("Could not read all of the requested bytes from the cache: offset={0}, filesize={1}, remain={2}, requested={3}, read={4}",
-                            pos, fileSize, fileSize - pos, bytes2Read, bytes));
+                        $"Could not read all of the requested bytes from the cache: offset={pos}, filesize={fileSize}, remain={fileSize - pos}, requested={bytes2Read}, read={bytes}");
                 }
 
                 pos += bytes2Read;
@@ -375,15 +342,9 @@ namespace Espresso3389.HttpStream
             return bytesRead;
         }
 
-        public override Task FlushAsync(System.Threading.CancellationToken cancellationToken)
-        {
-            throw new NotSupportedException();
-        }
+        public override Task FlushAsync(System.Threading.CancellationToken cancellationToken) => throw new NotSupportedException();
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken)
-        {
-            throw new NotSupportedException();
-        }
+        public override Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }
 
