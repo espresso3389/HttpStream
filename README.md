@@ -4,6 +4,10 @@ This C# project implements randomly accessible stream on HTTP 1.1 transport.
 Typically, HttpClient provides almost all HTTP features but it just provides us with a way to download a file completely.
 The implementation take advantage of HTTP 1.1 range access or on fallback case, it uses HTTP/1.0 sequential download anyway.
 
+## Source Code
+
+The source code is available at [GitHub](https://github.com/espresso3389/HttpStream).
+
 ## NuGet Package
 A prebuilt NuGet package is available: [HttpStream](https://www.nuget.org/packages/HttpStream/).
 
