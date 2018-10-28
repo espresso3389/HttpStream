@@ -138,7 +138,20 @@ namespace Espresso3389.HttpStream
         /// <returns>The file size.</returns>
         public override long GetStreamLengthOrDefault(long defValue) => IsStreamLengthAvailable ? StreamLength : defValue;
 
+        /// <summary>
+        /// Determine whether stream length is determined or not.
+        /// </summary>
         public override bool IsStreamLengthAvailable { get; protected set; }
+
+        /// <summary>
+        /// Last HTTP status code.
+        /// </summary>
+        public System.Net.HttpStatusCode LastHttpStatusCode { get; private set; }
+
+        /// <summary>
+        /// Last reason phrase obtained with <see cref="LastHttpStatusCode"/>.
+        /// </summary>
+        public string LastReasonPhrase { get; private set; }
 
         /// <summary>
         /// Download a portion of file and write to a stream.
@@ -163,6 +176,8 @@ namespace Espresso3389.HttpStream
 
             // post the request
             var res = await _httpClient.SendAsync(req, cancellationToken).ConfigureAwait(false);
+            LastHttpStatusCode = res.StatusCode;
+            LastReasonPhrase = res.ReasonPhrase;
             if (!res.IsSuccessStatusCode)
                 throw new Exception($"HTTP Status: {res.StatusCode} for bytes={offset}-{endPos - 1}");
 

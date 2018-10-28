@@ -7,17 +7,25 @@ namespace HttpStreamTest
     {
         static void Main(string[] args)
         {
-            var httpStream = new HttpStream(new Uri(args[0]));
-            var size = (int)httpStream.Length;
-            var first = Math.Min(1024, size);
-            var second = size - first;
+            try
+            {
+                var httpStream = new HttpStream(new Uri(args[0]));
+                var size = (int)httpStream.Length;
+                var first = Math.Min(1024, size);
+                var second = size - first;
 
-            var mem = new byte[size];
-            var firstRead = httpStream.Read(mem, 0, first);
-            var secondRead = httpStream.Read(mem, first, second);
-            var pos = httpStream.Position;
+                var mem = new byte[size];
+                var head = httpStream.Read(mem, 0, 1);
+                var firstRead = httpStream.Read(mem, 1, first - 1);
+                var secondRead = httpStream.Read(mem, first, second);
+                var pos = httpStream.Position;
 
-            Console.WriteLine($"Pos={pos}, Length={size}");
+                Console.WriteLine($"Pos={pos}, Length={size}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"{e.Message}\n{e.StackTrace}");
+            }
         }
     }
 }
