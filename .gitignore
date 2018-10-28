@@ -11,6 +11,7 @@ Thumbs.db
 *.bak
 *.nupkg
 project.lock.json
+launchSettings.json
 
 HttpStream/Properties/AssemblyInfo.cs
 HttpStream/.stamp.bat
