@@ -23,7 +23,7 @@ namespace Espresso3389.HttpStream
         int _bufferingSize;
 
         /// <summary>
-        /// Size in bytes of the file downloaing if available; otherwise it returns <see cref="long.MaxValue"/>.
+        /// Size in bytes of the file data downloaded so far if available; otherwise it returns <see cref="long.MaxValue"/>.
         /// <seealso cref="FileSizeAvailable"/>
         /// <seealso cref="GetStreamLengthOrDefault"/>
         /// </summary>
@@ -46,7 +46,7 @@ namespace Espresso3389.HttpStream
         /// </summary>
         public int BufferingSize
         {
-            get { return _bufferingSize; }
+            get => _bufferingSize;
             set
             {
                 if (value == 0 || bitCount(value) != 1)
@@ -72,12 +72,17 @@ namespace Espresso3389.HttpStream
         }
 
         /// <summary>
+        /// Default cache page size; 32KB.
+        /// </summary>
+        const int DefaultCachePageSize = 32 * 1024;
+
+        /// <summary>
         /// Creates a new HttpStream with the specified URI.
         /// </summary>
         /// <param name="uri">URI of the file to download.</param>
         /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
-        public HttpStream(Uri uri, Stream cache, bool ownStream) : this(uri, cache, ownStream, 32 * 1024, null)
+        public HttpStream(Uri uri, Stream cache, bool ownStream) : this(uri, cache, ownStream, DefaultCachePageSize, null)
         {
         }
 
@@ -154,16 +159,12 @@ namespace Espresso3389.HttpStream
 
             var req = new HttpRequestMessage(HttpMethod.Get, _uri);
             // Use "Range" header to sepcify the data offset and size
-            req.Headers.Add("Range", string.Format("bytes={0}-{1}", offset, endPos - 1));
+            req.Headers.Add("Range", $"bytes={offset}-{endPos - 1}");
 
             // post the request
             var res = await _httpClient.SendAsync(req, cancellationToken).ConfigureAwait(false);
             if (!res.IsSuccessStatusCode)
-                throw new Exception(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, offset, endPos - 1));
-            else
-            {
-                //Debug.WriteLine(string.Format("HTTP Status: {0} for bytes={1}-{2}", res.StatusCode, offset, endPos - 1));
-            }
+                throw new Exception($"HTTP Status: {res.StatusCode} for bytes={offset}-{endPos - 1}");
 
             // retrieve the resulting Content-Range
             bool getRanges = true;
@@ -184,11 +185,8 @@ namespace Espresso3389.HttpStream
                     {
                         StreamLength = long.Parse(sz);
                         IsStreamLengthAvailable = true;
-                        //Debug.WriteLine(string.Format("File size detected: {0}", StreamLength));
                     }
                 }
-
-                //Debug.WriteLine(string.Format("Req: {0}-{1} -> Res: {2} (of {3})", begin, end, size, StreamLength));
             }))
             {
                 // In some case, there's no Content-Range but Content-Length
@@ -199,20 +197,17 @@ namespace Espresso3389.HttpStream
                 {
                     StreamLength = end = size = long.Parse(v);
                     IsStreamLengthAvailable = true;
-                    //Debug.WriteLine(string.Format("File size detected: {0}", StreamLength));
                 });
             }
 
             actionIfFound(res, "Content-Type", v =>
             {
                 ContentType = v;
-                //Debug.WriteLine("Content-Type: " + ContentType);
             });
 
             actionIfFound(res, "Last-Modified", v =>
             {
                 LastModified = parseDateTime(v);
-                //Debug.WriteLine("Last-Modified: " + LastModified.ToString("O"));
             });
 
             InspectionFinished = true;
