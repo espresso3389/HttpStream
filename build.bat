@@ -13,9 +13,6 @@ call :find_exe git
 if ERRORLEVEL 1 goto errend
 call :find_exe msbuild
 if ERRORLEVEL 1 goto errend
-call :find_exe nuget
-if ERRORLEVEL 1 goto errend
-
 
 call :set_revision
 if ERRORLEVEL 1 goto :errend
@@ -27,7 +24,8 @@ call :set_build
 set ASMVER=2.0.%REV%.%BUILD%
 echo Version: %ASMVER% (Rev=%REV%, Build=%BUILD%, Commit=%COMMIT%)
 
-nuget restore
+set "PLATFORM=Any CPU"
+
 pushd HttpStream
 msbuild HttpStream.csproj "/p:Configuration=%CONFIG%" "/p:Platform=%PLATFORM%" "/p:ASMVER=%ASMVER%" "/p:COMMIT=%COMMIT%"
 popd
@@ -35,7 +33,7 @@ popd
 rmdir /S /Q %CURDIR%\dist
 mkdir %CURDIR%\dist
 pushd %CURDIR%\dist
-%CURDIR%\nuget pack %CURDIR%\\HttpStream\HttpStream.csproj -Prop "Configuration=%CONFIG%" -Prop "Platform=%PLATFORM%" -Prop "ASMVER=%ASMVER%" -Prop "COMMIT=%COMMIT%" -symbols
+dotnet pack -c %CONFIG% %CURDIR%\\HttpStream\HttpStream.csproj
 popd
 
 goto :EOF
