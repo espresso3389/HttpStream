@@ -27,13 +27,9 @@ echo Version: %ASMVER% (Rev=%REV%, Build=%BUILD%, Commit=%COMMIT%)
 set "PLATFORM=Any CPU"
 
 pushd HttpStream
+dotnet restore HttpStream.csproj
 msbuild HttpStream.csproj "/p:Configuration=%CONFIG%" "/p:Platform=%PLATFORM%" "/p:ASMVER=%ASMVER%" "/p:COMMIT=%COMMIT%"
-popd
-
-rmdir /S /Q %CURDIR%\dist
-mkdir %CURDIR%\dist
-pushd %CURDIR%\dist
-dotnet pack -c %CONFIG% %CURDIR%\\HttpStream\HttpStream.csproj
+dotnet pack -c %CONFIG% HttpStream.csproj
 popd
 
 goto :EOF
