@@ -5,9 +5,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Espresso3389.HttpStream
 {
+    public delegate void DispatcherInvoker(Action action);
+
     /// <summary>
     /// A <see cref="Stream"/> implementation, which provides caching mechanism for slow streams.
     /// </summary>
@@ -20,7 +23,7 @@ namespace Espresso3389.HttpStream
         /// <param name="ownCacheStream"><c>true</c> to instruct the object to close <paramref name="cacheStream"/> on its cleanup.</param>
         /// <param name="cachePageSize">Cache page size. The default is 32K.</param>
         public CacheStream(Stream cacheStream, bool ownCacheStream, int cachePageSize = 32 * 1024)
-            : this(cacheStream, ownCacheStream, cachePageSize, null)
+            : this(cacheStream, ownCacheStream, cachePageSize, null, null)
         {
         }
 
@@ -31,7 +34,8 @@ namespace Espresso3389.HttpStream
         /// <param name="ownCacheStream"><c>true</c> to instruct the object to close <paramref name="cacheStream"/> on its cleanup.</param>
         /// <param name="cachePageSize">Cache page size.</param>
         /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
-        public CacheStream(Stream cacheStream, bool ownCacheStream, int cachePageSize, byte[] cached)
+        /// <param name="dispatcherInvoker">Function called on every call to synchronous <see cref="CacheStream.Read(byte[], int, int)"/> call to invoke <see cref="CacheStream.ReadAsync(byte[], int, int, CancellationToken)"/>.</param>
+        public CacheStream(Stream cacheStream, bool ownCacheStream, int cachePageSize, byte[] cached, DispatcherInvoker dispatcherInvoker)
         {
             if (cacheStream == null)
             {
@@ -46,6 +50,9 @@ namespace Espresso3389.HttpStream
             _ownStream = ownCacheStream;
             _cached = cached;
             _cachePageSize = cachePageSize;
+            DispatcherInvoker = dispatcherInvoker;
+            if (dispatcherInvoker != null)
+                _event = new ManualResetEventSlim();
         }
 
         Stream _cacheStream;
@@ -53,6 +60,44 @@ namespace Espresso3389.HttpStream
         byte[] _cached;
         int _cachePageSize;
         bool _isFullyCached;
+        ManualResetEventSlim _event;
+
+        protected DispatcherInvoker DispatcherInvoker { get; }
+
+        protected ConfiguredTaskAwaitable<T> WrapTask<T>(Task<T> task) => task.ConfigureAwait(DispatcherInvoker != null);
+
+        protected T Wait<T>(Func<Task<T>> func)
+        {
+            if (DispatcherInvoker == null)
+            {
+                return func().Result;
+            }
+
+            T ret = default(T);
+            Exception ex = null;
+
+            _event.Reset();
+            DispatcherInvoker(async () =>
+            {
+                try
+                {
+                    ret = await func();
+                }
+                catch (Exception e)
+                {
+                    ex = e;
+                }
+                finally
+                {
+                    _event.Set();
+                }
+            });
+            _event.Wait();
+
+            if (ex != null)
+                throw ex;
+            return ret;
+        }
 
         protected override void Dispose(bool disposing)
         {
@@ -64,6 +109,11 @@ namespace Espresso3389.HttpStream
                     _cacheStream.Dispose();
                     _cacheStream = null;
                 }
+                if (_event != null)
+                {
+                    _event.Dispose();
+                    _event = null;
+                }
             }
         }
 
@@ -74,7 +124,7 @@ namespace Espresso3389.HttpStream
             // Nothing to do; we only supports read accesses.
         }
 
-        public override int Read(byte[] buffer, int offset, int count) => ReadAsync(buffer, offset, count).Result;
+        public override int Read(byte[] buffer, int offset, int count) => Wait(() => ReadAsync(buffer, offset, count));
 
         public override long Seek(long offset, SeekOrigin origin)
         {
@@ -103,14 +153,14 @@ namespace Espresso3389.HttpStream
 
         public override bool CanWrite => false;
 
-        public override long Length => GetLengthAsync().Result;
+        public override long Length => Wait(() => GetLengthAsync());
 
         public async Task<long> GetLengthAsync()
         {
             var length = GetStreamLengthOrDefault(long.MaxValue);
             if (length == long.MaxValue)
             {
-                await readAsync(0L, new byte[1], 0, 1, CancellationToken.None).ConfigureAwait(false);
+                await WrapTask(readAsync(0L, new byte[1], 0, 1, CancellationToken.None));
                 length = GetStreamLengthOrDefault(long.MaxValue);
             }
             return length;
@@ -301,7 +351,7 @@ namespace Espresso3389.HttpStream
                     var offsetToLoad = i * _cachePageSize;
                     var sizeToLoad = pagesNotCached * _cachePageSize;
 
-                    var sizeLoaded = await LoadAsync(_cacheStream, offsetToLoad, sizeToLoad, cancellationToken).ConfigureAwait(false);
+                    var sizeLoaded = await WrapTask(LoadAsync(_cacheStream, offsetToLoad, sizeToLoad, cancellationToken));
                     if (fileSize < long.MaxValue && offsetToLoad + sizeToLoad <= fileSize && sizeLoaded < sizeToLoad)
                     {
                         // the block tried to read is a part of the actual file (we know the file size!)
@@ -325,7 +375,7 @@ namespace Espresso3389.HttpStream
                 }
 
                 _cacheStream.Position = pos;
-                var bytes = await _cacheStream.ReadAsync(buffer, offset, bytes2Read, cancellationToken).ConfigureAwait(false);
+                var bytes = await WrapTask(_cacheStream.ReadAsync(buffer, offset, bytes2Read, cancellationToken));
                 if (fileSize < long.MaxValue && pos + bytes2Read <= fileSize && bytes < bytes2Read)
                 {
                     // the block tried to read is a part of the actual file (we know the file size!)

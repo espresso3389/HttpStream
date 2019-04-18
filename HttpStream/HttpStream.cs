@@ -107,7 +107,31 @@ namespace Espresso3389.HttpStream
         /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
         /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests.</param>
         public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[] cached, HttpClient httpClient)
-            : base(cache, ownStream, cachePageSize, cached)
+            : base(cache, ownStream, cachePageSize, cached, null)
+        {
+            StreamLength = long.MaxValue;
+            _uri = uri;
+            _httpClient = httpClient;
+            if (_httpClient == null)
+            {
+                _httpClient = new HttpClient();
+                _ownHttpClient = true;
+            }
+            BufferingSize = cachePageSize;
+        }
+
+        /// <summary>
+        /// Creates a new HttpStream with the specified URI.
+        /// </summary>
+        /// <param name="uri">URI of the file to download.</param>
+        /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
+        /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
+        /// <param name="cachePageSize">Cache page size.</param>
+        /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
+        /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests.</param>
+        /// <param name="dispatcherInvoker">Function called on every call to synchronous <see cref="HttpStream.Read(byte[], int, int)"/> call to invoke <see cref="HttpStream.ReadAsync(byte[], int, int, CancellationToken)"/>.</param>
+        public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[] cached, HttpClient httpClient, DispatcherInvoker dispatcherInvoker)
+            : base(cache, ownStream, cachePageSize, cached, dispatcherInvoker)
         {
             StreamLength = long.MaxValue;
             _uri = uri;
