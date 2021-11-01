@@ -1,10 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Espresso3389.HttpStream
@@ -392,9 +389,9 @@ namespace Espresso3389.HttpStream
             return bytesRead;
         }
 
-        public override Task FlushAsync(System.Threading.CancellationToken cancellationToken) => throw new NotSupportedException();
+        public override Task FlushAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) => throw new NotSupportedException();
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }
 

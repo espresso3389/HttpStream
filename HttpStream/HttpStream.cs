@@ -1,12 +1,10 @@
 using System;
-using System.Collections;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Globalization;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Threading;
 
@@ -24,7 +22,7 @@ namespace Espresso3389.HttpStream
 
         /// <summary>
         /// Size in bytes of the file data downloaded so far if available; otherwise it returns <see cref="long.MaxValue"/>.
-        /// <seealso cref="FileSizeAvailable"/>
+        /// <seealso cref="IsStreamLengthAvailable"/>
         /// <seealso cref="GetStreamLengthOrDefault"/>
         /// </summary>
         public long StreamLength { get; private set; }
@@ -50,7 +48,7 @@ namespace Espresso3389.HttpStream
             set
             {
                 if (value == 0 || bitCount(value) != 1)
-                    throw new ArgumentOutOfRangeException("BufferingSize should be 2^n.");
+                    throw new ArgumentOutOfRangeException(nameof(BufferingSize), value, "BufferingSize should be 2^n.");
                 _bufferingSize = value;
             }
         }
@@ -92,6 +90,8 @@ namespace Espresso3389.HttpStream
         /// <param name="uri">URI of the file to download.</param>
         /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
+        /// <param name="cachePageSize">Cache page size.</param>
+        /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
         public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[] cached)
             : this(uri, cache, ownStream, cachePageSize, cached, null)
         {
@@ -158,7 +158,7 @@ namespace Espresso3389.HttpStream
         /// </summary>
         /// <param name="defValue">If the file is not available, the value is returned.</param>
         /// <seealso cref="StreamLength"/>
-        /// <seealso cref="FileSizeAvailable"/>
+        /// <seealso cref="IsStreamLengthAvailable"/>
         /// <returns>The file size.</returns>
         public override long GetStreamLengthOrDefault(long defValue) => IsStreamLengthAvailable ? StreamLength : defValue;
 
@@ -207,7 +207,7 @@ namespace Espresso3389.HttpStream
 
             // retrieve the resulting Content-Range
             bool getRanges = true;
-            long begin = 0, end = long.MaxValue;
+            long begin = 0, end;
             long size = long.MaxValue;
             if (!actionIfFound(res, "Content-Range", range =>
             {
