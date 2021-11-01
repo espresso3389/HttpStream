@@ -16,10 +16,10 @@ namespace Espresso3389.HttpStream
         /// <summary>
         /// Creates a new <see cref="CacheStream"/> object.
         /// </summary>
-        /// <param name="cacheStream"><see cref="Stream"/> to cache the file.</param>
+        /// <param name="cacheStream"><see cref="Stream"/> to cache the file or <c>null</c> to use a <see cref="MemoryStream"/>.</param>
         /// <param name="ownCacheStream"><c>true</c> to instruct the object to close <paramref name="cacheStream"/> on its cleanup.</param>
-        /// <param name="cachePageSize">Cache page size. The default is 32K.</param>
-        public CacheStream(Stream cacheStream, bool ownCacheStream, int cachePageSize = 32 * 1024)
+        /// <param name="cachePageSize">Cache page size. The default is 32 KiB.</param>
+        public CacheStream(Stream? cacheStream, bool ownCacheStream, int cachePageSize = 32 * 1024)
             : this(cacheStream, ownCacheStream, cachePageSize, null, null)
         {
         }
@@ -27,12 +27,12 @@ namespace Espresso3389.HttpStream
         /// <summary>
         /// Creates a new <see cref="CacheStream"/> object.
         /// </summary>
-        /// <param name="cacheStream"><see cref="Stream"/> to cache the file.</param>
+        /// <param name="cacheStream"><see cref="Stream"/> to cache the file or <c>null</c> to use a <see cref="MemoryStream"/>.</param>
         /// <param name="ownCacheStream"><c>true</c> to instruct the object to close <paramref name="cacheStream"/> on its cleanup.</param>
         /// <param name="cachePageSize">Cache page size.</param>
         /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
         /// <param name="dispatcherInvoker">Function called on every call to synchronous <see cref="CacheStream.Read(byte[], int, int)"/> call to invoke <see cref="CacheStream.ReadAsync(byte[], int, int, CancellationToken)"/>.</param>
-        public CacheStream(Stream cacheStream, bool ownCacheStream, int cachePageSize, byte[] cached, DispatcherInvoker dispatcherInvoker)
+        public CacheStream(Stream? cacheStream, bool ownCacheStream, int cachePageSize, byte[]? cached, DispatcherInvoker? dispatcherInvoker)
         {
             if (cacheStream == null)
             {
@@ -41,37 +41,36 @@ namespace Espresso3389.HttpStream
             }
 
             if (!cacheStream.CanSeek || !cacheStream.CanRead || !cacheStream.CanWrite)
-                throw new ArgumentException("cacheStream should be seekable/readable/writeable.", "cacheStream");
+                throw new ArgumentException("cacheStream should be seekable/readable/writeable.", nameof(cacheStream));
 
             _cacheStream = cacheStream;
             _ownStream = ownCacheStream;
             _cached = cached;
             _cachePageSize = cachePageSize;
             DispatcherInvoker = dispatcherInvoker;
-            if (dispatcherInvoker != null)
-                _event = new ManualResetEventSlim();
+            _event = new ManualResetEventSlim();
         }
 
-        Stream _cacheStream;
-        bool _ownStream;
-        byte[] _cached;
-        int _cachePageSize;
+        readonly Stream _cacheStream;
+        readonly bool _ownStream;
+        readonly int _cachePageSize;
+        readonly ManualResetEventSlim _event;
+        byte[]? _cached;
         bool _isFullyCached;
-        ManualResetEventSlim _event;
 
-        protected DispatcherInvoker DispatcherInvoker { get; }
+        protected DispatcherInvoker? DispatcherInvoker { get; }
 
         protected ConfiguredTaskAwaitable<T> WrapTask<T>(Task<T> task) => task.ConfigureAwait(DispatcherInvoker != null);
 
-        protected T Wait<T>(Func<Task<T>> func)
+        protected T? Wait<T>(Func<Task<T?>> func)
         {
             if (DispatcherInvoker == null)
             {
                 return func().Result;
             }
 
-            T ret = default(T);
-            Exception ex = null;
+            T? ret = default(T);
+            Exception? ex = null;
 
             _event.Reset();
             DispatcherInvoker(async () =>
@@ -101,16 +100,11 @@ namespace Espresso3389.HttpStream
             base.Dispose(disposing);
             if (disposing)
             {
-                if (_ownStream && _cacheStream != null)
+                if (_ownStream)
                 {
                     _cacheStream.Dispose();
-                    _cacheStream = null;
                 }
-                if (_event != null)
-                {
-                    _event.Dispose();
-                    _event = null;
-                }
+                _event.Dispose();
             }
         }
 

@@ -15,9 +15,9 @@ namespace Espresso3389.HttpStream
     /// </summary>
     public class HttpStream : CacheStream
     {
-        Uri _uri;
-        HttpClient _httpClient;
-        bool _ownHttpClient;
+        readonly Uri _uri;
+        readonly HttpClient _httpClient;
+        readonly bool _ownHttpClient;
         int _bufferingSize;
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Espresso3389.HttpStream
         /// <summary>
         /// Content type of the file.
         /// </summary>
-        public string ContentType { get; private set; }
+        public string? ContentType { get; private set; }
         /// <summary>
         /// Buffering size for downloading the file.
         /// </summary>
@@ -92,7 +92,7 @@ namespace Espresso3389.HttpStream
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
         /// <param name="cachePageSize">Cache page size.</param>
         /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
-        public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[] cached)
+        public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[]? cached)
             : this(uri, cache, ownStream, cachePageSize, cached, null)
         {
         }
@@ -105,19 +105,10 @@ namespace Espresso3389.HttpStream
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
         /// <param name="cachePageSize">Cache page size.</param>
         /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
-        /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests.</param>
-        public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[] cached, HttpClient httpClient)
-            : base(cache, ownStream, cachePageSize, cached, null)
+        /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests or <c>null</c> to use a default <see cref="HttpClient"/>.</param>
+        public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[]? cached, HttpClient? httpClient)
+            : this(uri, cache, ownStream, cachePageSize, cached, httpClient, null)
         {
-            StreamLength = long.MaxValue;
-            _uri = uri;
-            _httpClient = httpClient;
-            if (_httpClient == null)
-            {
-                _httpClient = new HttpClient();
-                _ownHttpClient = true;
-            }
-            BufferingSize = cachePageSize;
         }
 
         /// <summary>
@@ -128,18 +119,22 @@ namespace Espresso3389.HttpStream
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
         /// <param name="cachePageSize">Cache page size.</param>
         /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
-        /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests.</param>
+        /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests or <c>null</c> to use a default <see cref="HttpClient"/>.</param>
         /// <param name="dispatcherInvoker">Function called on every call to synchronous <see cref="HttpStream.Read(byte[], int, int)"/> call to invoke <see cref="HttpStream.ReadAsync(byte[], int, int, CancellationToken)"/>.</param>
-        public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[] cached, HttpClient httpClient, DispatcherInvoker dispatcherInvoker)
+        public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[]? cached, HttpClient? httpClient, DispatcherInvoker? dispatcherInvoker)
             : base(cache, ownStream, cachePageSize, cached, dispatcherInvoker)
         {
             StreamLength = long.MaxValue;
             _uri = uri;
-            _httpClient = httpClient;
-            if (_httpClient == null)
+            if (httpClient == null)
             {
                 _httpClient = new HttpClient();
                 _ownHttpClient = true;
+            }
+            else
+            {
+                _httpClient = httpClient;
+                _ownHttpClient = false;
             }
             BufferingSize = cachePageSize;
         }
@@ -175,7 +170,7 @@ namespace Espresso3389.HttpStream
         /// <summary>
         /// Last reason phrase obtained with <see cref="LastHttpStatusCode"/>.
         /// </summary>
-        public string LastReasonPhrase { get; private set; }
+        public string? LastReasonPhrase { get; private set; }
 
         /// <summary>
         /// Download a portion of file and write to a stream.
@@ -275,8 +270,7 @@ namespace Espresso3389.HttpStream
                 IsStreamLengthAvailable = true;
             }
 
-            if (RangeDownloaded != null)
-                RangeDownloaded(this, new RangeDownloadedEventArgs { Offset = begin, Length = copied });
+            RangeDownloaded?.Invoke(this, new RangeDownloadedEventArgs { Offset = begin, Length = copied });
             return copied;
         }
 
@@ -294,7 +288,7 @@ namespace Espresso3389.HttpStream
         /// <summary>
         /// Invoked when a new range is downloaded.
         /// </summary>
-        public event EventHandler<RangeDownloadedEventArgs> RangeDownloaded;
+        public event EventHandler<RangeDownloadedEventArgs>? RangeDownloaded;
 
         static DateTime parseDateTime(string dateTime)
         {
