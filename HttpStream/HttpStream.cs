@@ -13,7 +13,7 @@ namespace Espresso3389.HttpStream
     /// <summary>
     /// Implements randomly accessible <see cref="Stream"/> on HTTP 1.1 transport.
     /// </summary>
-    public class HttpStream : CacheStream
+    public partial class HttpStream : CacheStream
     {
         readonly Uri _uri;
         readonly HttpClient _httpClient;
@@ -65,6 +65,7 @@ namespace Espresso3389.HttpStream
         /// The file will be cached on memory.
         /// </summary>
         /// <param name="uri">URI of the file to download.</param>
+        [Obsolete("Please use the CreateAsync(Uri, CancellationToken) static method instead.")]
         public HttpStream(Uri uri) : this(uri, new MemoryStream(), true)
         {
         }
@@ -80,6 +81,7 @@ namespace Espresso3389.HttpStream
         /// <param name="uri">URI of the file to download.</param>
         /// <param name="cache">Stream, on which the file will be cached. It should be seekable, readable and writeable.</param>
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
+        [Obsolete("Please use the CreateAsync(Uri, Stream, bool, CancellationToken) static method instead.")]
         public HttpStream(Uri uri, Stream cache, bool ownStream) : this(uri, cache, ownStream, DefaultCachePageSize, null)
         {
         }
@@ -92,6 +94,7 @@ namespace Espresso3389.HttpStream
         /// <param name="ownStream"><c>true</c> to dispose <paramref name="cache"/> on HttpStream's cleanup.</param>
         /// <param name="cachePageSize">Cache page size.</param>
         /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
+        [Obsolete("Please use the CreateAsync(Uri, Stream, bool, int, byte[]?, CancellationToken) static method instead.")]
         public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[]? cached)
             : this(uri, cache, ownStream, cachePageSize, cached, null)
         {
@@ -106,6 +109,7 @@ namespace Espresso3389.HttpStream
         /// <param name="cachePageSize">Cache page size.</param>
         /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
         /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests or <c>null</c> to use a default <see cref="HttpClient"/>.</param>
+        [Obsolete("Please use the CreateAsync(Uri, Stream, bool, int, byte[]?, HttpClient?, CancellationToken) static method instead.")]
         public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[]? cached, HttpClient? httpClient)
             : this(uri, cache, ownStream, cachePageSize, cached, httpClient, null)
         {
@@ -121,6 +125,7 @@ namespace Espresso3389.HttpStream
         /// <param name="cached">Cached flags for the pages in packed bits if any; otherwise it can be <c>null</c>.</param>
         /// <param name="httpClient"><see cref="HttpClient"/> to use on creating HTTP requests or <c>null</c> to use a default <see cref="HttpClient"/>.</param>
         /// <param name="dispatcherInvoker">Function called on every call to synchronous <see cref="HttpStream.Read(byte[], int, int)"/> call to invoke <see cref="HttpStream.ReadAsync(byte[], int, int, CancellationToken)"/>.</param>
+        [Obsolete("Please use the CreateAsync(Uri, Stream, bool, int, byte[]?, HttpClient?, DispatcherInvoker?, CancellationToken) static method instead.")]
         public HttpStream(Uri uri, Stream cache, bool ownStream, int cachePageSize, byte[]? cached, HttpClient? httpClient, DispatcherInvoker? dispatcherInvoker)
             : base(cache, ownStream, cachePageSize, cached, dispatcherInvoker)
         {
