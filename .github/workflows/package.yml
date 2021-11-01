@@ -1,0 +1,44 @@
+name: Build package
+
+on:
+  push:
+    paths-ignore:
+      - "README.md"
+      - "LICENSE"
+      - ".gitignore"
+      - ".gitattributes"
+      - ".editorconfig"
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x'
+
+      - name: Generate version info
+        run: ./scripts/gitrev.sh
+
+      - name: Build the assembly
+        run: |
+          cd HttpStream
+          dotnet build --configuration Release HttpStream.csproj -p:ASM_VER=${{ env.ASM_VER }} -p:ASM_COMMIT=${{ env.ASM_COMMIT }} -p:ASM_BUILD_FOR=${{ env.ASM_BUILD_FOR }}
+
+      - name: Create the package
+        run: |
+          cd HttpStream
+          dotnet pack --configuration Release HttpStream.csproj
+
+      - name: Upload the package as an artifact anyway
+        uses: actions/upload-artifact@v2
+        with:
+          name: HttpStream-${{ env.ASM_VER }}-${{ env.ASM_COMMIT }}
+          path: HttpStream/bin/Release/*.nupkg
+          retention-days: 7

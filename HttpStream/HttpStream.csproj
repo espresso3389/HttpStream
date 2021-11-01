@@ -4,17 +4,17 @@
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
     <RootNamespace>Espresso3389.HttpStream</RootNamespace>
-    <Version Condition=" '$(ASMVER)' == '' ">2.0.0</Version>
-    <Version Condition=" '$(ASMVER)' != '' ">$(ASMVER)</Version>
+    <Version Condition=" '$(ASM_VER)' == '' ">2.0.0</Version>
+    <Version Condition=" '$(ASM_VER)' != '' ">$(ASM_VER)</Version>
     <PackageId>Espresso3389.HttpStream</PackageId>
     <Authors>espresso3389</Authors>
     <Product>Espresso3389.HttpStream</Product>
-    <Description>Seekable HTTP stream based on HTTP/1.1 Range Access; $(ASMVER); ($(COMMIT))</Description>
-    <Copyright>Copyright 2018 Takashi Kawasaki (@espresso3389)</Copyright>
+    <Description>Seekable HTTP stream based on HTTP/1.1 Range Access; $(ASM_VER); ($(ASM_COMMIT))</Description>
+    <Copyright>Copyright 2021 Takashi Kawasaki (@espresso3389)</Copyright>
     <PackageTags>HTTP, Stream, Random Access, Seekable, HTTP/1.1, Range Access</PackageTags>
     <PackageLicenseUrl>https://github.com/espresso3389/HttpStream/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/espresso3389/HttpStream</PackageProjectUrl>
-    <PackageReleaseNotes>$(COMMIT)</PackageReleaseNotes>
+    <PackageReleaseNotes>$(ASM_VER); $(ASM_COMMIT); $(ASM_BUILD_FOR)</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/espresso3389/HttpStream</RepositoryUrl>
   </PropertyGroup>
 </Project>
