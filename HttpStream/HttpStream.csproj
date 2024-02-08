@@ -10,11 +10,16 @@
     <Authors>espresso3389</Authors>
     <Product>Espresso3389.HttpStream</Product>
     <Description>Seekable HTTP stream based on HTTP/1.1 Range Access; $(ASM_VER); ($(ASM_COMMIT))</Description>
-    <Copyright>Copyright 2021 Takashi Kawasaki (@espresso3389)</Copyright>
+    <Copyright>Copyright 2024 Takashi Kawasaki (@espresso3389)</Copyright>
     <PackageTags>HTTP, Stream, Random Access, Seekable, HTTP/1.1, Range Access</PackageTags>
-    <PackageLicenseUrl>https://github.com/espresso3389/HttpStream/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/espresso3389/HttpStream</PackageProjectUrl>
     <PackageReleaseNotes>$(ASM_VER); $(ASM_COMMIT); $(ASM_BUILD_FOR)</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/espresso3389/HttpStream</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\"/>
+    <None Include="..\LICENSE" Pack="true" PackagePath="\"/>
+  </ItemGroup>
 </Project>
