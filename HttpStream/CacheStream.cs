@@ -298,7 +298,7 @@ namespace Espresso3389.HttpStream
         /// <param name="length">The length of the data to download.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The byte range actually loaded. It may be larger than the requested range.</returns>
-        protected abstract Task<int> LoadAsync(Stream stream, int offset, int length, CancellationToken cancellationToken);
+        protected abstract Task<int> LoadAsync(Stream stream, long offset, int length, CancellationToken cancellationToken);
 
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
@@ -339,7 +339,7 @@ namespace Espresso3389.HttpStream
                         }
                     }
 
-                    var offsetToLoad = i * _cachePageSize;
+                    var offsetToLoad = (long)i * _cachePageSize;
                     var sizeToLoad = pagesNotCached * _cachePageSize;
 
                     var sizeLoaded = await WrapTask(LoadAsync(_cacheStream, offsetToLoad, sizeToLoad, cancellationToken));
