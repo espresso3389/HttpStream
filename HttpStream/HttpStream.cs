@@ -185,7 +185,7 @@ namespace Espresso3389.HttpStream
         /// <param name="length">The length of the data to download.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The byte range actually downloaded. It may be larger than the requested range.</returns>
-        protected override async Task<int> LoadAsync(Stream stream, int offset, int length, CancellationToken cancellationToken)
+        protected override async Task<int> LoadAsync(Stream stream, long offset, int length, CancellationToken cancellationToken)
         {
             if (length == 0)
                 return 0;
