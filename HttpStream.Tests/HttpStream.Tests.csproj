@@ -17,4 +17,9 @@
     <ProjectReference Include="..\HttpStream\HttpStream.csproj" />
   </ItemGroup>
 
+  <PropertyGroup Condition="$(ContinuousIntegrationBuild) == 'true'">
+    <VSTestLogger>trx%3BLogFileName=TestResults-$(TargetFramework).trx</VSTestLogger>
+    <VSTestResultsDirectory>$([System.IO.Directory]::GetParent($(MSBuildProjectDirectory)))</VSTestResultsDirectory>
+  </PropertyGroup>
+
 </Project>
