@@ -22,7 +22,7 @@ jobs:
       packages: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
       - name: Generate version info
         run: ./scripts/gitrev.sh
@@ -34,7 +34,7 @@ jobs:
         run: dotnet test
 
       - name: Generate the test report
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@dc3a92680fcc15842eef52e8c4606ea7ce6bd3f3 # v2.1.1
         if: always()
         with:
           name: Test Results
@@ -45,7 +45,7 @@ jobs:
         run: dotnet pack
 
       - name: Upload the package as an artifact anyway
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: HttpStream-${{ env.ASM_VER }}-${{ env.ASM_COMMIT }}
           path: HttpStream/bin/Release/*.nupkg

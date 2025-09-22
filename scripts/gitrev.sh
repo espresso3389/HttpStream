@@ -1,7 +1,7 @@
 #!/bin/bash
 
 build=0
-rev=$(($GITHUB_RUN_NUMBER+60))
+rev=$((GITHUB_RUN_NUMBER+60))
 ver=2.0.${rev}.${build}
 commit=$GITHUB_SHA
 branch=$GITHUB_REF
