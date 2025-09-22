@@ -200,7 +200,12 @@ namespace Espresso3389.HttpStream
             LastHttpStatusCode = res.StatusCode;
             LastReasonPhrase = res.ReasonPhrase;
             if (!res.IsSuccessStatusCode)
-                throw new Exception($"HTTP Status: {res.StatusCode} for bytes={offset}-{endPos - 1}");
+            {
+                var message = string.IsNullOrWhiteSpace(res.ReasonPhrase)
+                    ? $"Response status code does not indicate success for {req.Headers.Range}: {(int)res.StatusCode}."
+                    : $"Response status code does not indicate success for {req.Headers.Range}: {(int)res.StatusCode} ({res.ReasonPhrase}).";
+                throw new HttpRequestException(message);
+            }
 
             // retrieve the resulting Content-Range
             bool getRanges;

@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -61,5 +62,16 @@ public class HttpStreamTest(WebAppFixture webApp) : IClassFixture<WebAppFixture>
         await httpStream.CopyToAsync(memoryStream);
         memoryStream.Length.Should().Be(60);
         memoryStream.ToArray().Should().OnlyContain(b => b == 'A');
+    }
+
+    [Fact]
+    public async Task TestNotFound()
+    {
+        var uri = new Uri(webApp.GetBytesUri(100).AbsoluteUri.Replace("/bytes/", "/not_found/"));
+        await using var httpStream = await HttpStream.CreateAsync(uri);
+
+        var action = () => httpStream.CopyToAsync(Stream.Null);
+
+        (await action.Should().ThrowExactlyAsync<HttpRequestException>()).WithMessage("Response status code does not indicate success for bytes=0-32767: 404 (Not Found).");
     }
 }
