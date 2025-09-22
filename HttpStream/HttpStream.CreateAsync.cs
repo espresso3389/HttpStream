@@ -76,7 +76,7 @@ namespace Espresso3389.HttpStream
 #pragma warning disable 618
             var httpStream = new HttpStream(uri, cache, ownStream, cachePageSize, cached, httpClient, dispatcherInvoker);
 #pragma warning restore 618
-            using var headResponse = await httpStream._httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, uri), cancellationToken);
+            using var headResponse = await httpStream._httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, uri), HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             var contentLength = headResponse.Content.Headers.ContentLength;
             if (contentLength.HasValue)
             {

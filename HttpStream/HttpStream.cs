@@ -199,7 +199,7 @@ namespace Espresso3389.HttpStream
             req.Headers.Add("Range", $"bytes={offset}-{endPos - 1}");
 
             // post the request
-            var res = await _httpClient.SendAsync(req, cancellationToken).ConfigureAwait(false);
+            var res = await _httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             LastHttpStatusCode = res.StatusCode;
             LastReasonPhrase = res.ReasonPhrase;
             if (!res.IsSuccessStatusCode)
