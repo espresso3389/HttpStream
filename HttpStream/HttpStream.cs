@@ -1,11 +1,8 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
-using System.Collections.Generic;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using System.Globalization;
-using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace Espresso3389.HttpStream
@@ -195,8 +192,8 @@ namespace Espresso3389.HttpStream
                 endPos = StreamLength;
 
             var req = new HttpRequestMessage(HttpMethod.Get, _uri);
-            // Use "Range" header to sepcify the data offset and size
-            req.Headers.Add("Range", $"bytes={offset}-{endPos - 1}");
+            // Use "Range" header to specify the data offset and size
+            req.Headers.Range = new RangeHeaderValue(offset, endPos - 1);
 
             // post the request
             var res = await _httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
@@ -206,48 +203,37 @@ namespace Espresso3389.HttpStream
                 throw new Exception($"HTTP Status: {res.StatusCode} for bytes={offset}-{endPos - 1}");
 
             // retrieve the resulting Content-Range
-            bool getRanges = true;
-            long begin = 0, end;
+            bool getRanges;
+            long begin;
             long size = long.MaxValue;
-            if (!actionIfFound(res, "Content-Range", range =>
+            var contentRange = res.Content.Headers.ContentRange;
+            if (contentRange is { From: not null, To: not null })
             {
                 // 206
-                var m = Regex.Match(range, @"bytes\s+([0-9]+)-([0-9]+)/(\w+)");
-                begin = long.Parse(m.Groups[1].Value);
-                end = long.Parse(m.Groups[2].Value);
-                size = end - begin + 1;
+                getRanges = true;
+                begin = contentRange.From.Value;
+                size = contentRange.To.Value - begin + 1;
 
-                if (!IsStreamLengthAvailable)
+                if (!IsStreamLengthAvailable && contentRange.Length.HasValue)
                 {
-                    var sz = m.Groups[3].Value;
-                    if (sz != "*")
-                    {
-                        StreamLength = long.Parse(sz);
-                        IsStreamLengthAvailable = true;
-                    }
+                    StreamLength = contentRange.Length.Value;
+                    IsStreamLengthAvailable = true;
                 }
-            }))
+            }
+            else
             {
-                // In some case, there's no Content-Range but Content-Length
-                // instead.
+                // In some case, there's no Content-Range but Content-Length instead.
                 getRanges = false;
                 begin = 0;
-                actionIfFound(res, "Content-Length", v =>
+                if (res.Content.Headers.ContentLength.HasValue)
                 {
-                    StreamLength = end = size = long.Parse(v);
+                    StreamLength = size = res.Content.Headers.ContentLength.Value;
                     IsStreamLengthAvailable = true;
-                });
+                }
             }
 
-            actionIfFound(res, "Content-Type", v =>
-            {
-                ContentType = v;
-            });
-
-            actionIfFound(res, "Last-Modified", v =>
-            {
-                LastModified = parseDateTime(v);
-            });
+            ContentType = res.Content.Headers.ContentType?.ToString();
+            LastModified = res.Content.Headers.LastModified?.DateTime ?? default;
 
             InspectionFinished = true;
 
@@ -279,36 +265,10 @@ namespace Espresso3389.HttpStream
             return copied;
         }
 
-        bool actionIfFound(HttpResponseMessage res, string name, Action<string> action)
-        {
-            IEnumerable<string> strs;
-            if (res.Content.Headers.TryGetValues(name, out strs))
-            {
-                action(strs.First());
-                return true;
-            }
-            return false;
-        }
-
         /// <summary>
         /// Invoked when a new range is downloaded.
         /// </summary>
         public event EventHandler<RangeDownloadedEventArgs>? RangeDownloaded;
-
-        static DateTime parseDateTime(string dateTime)
-        {
-            if (dateTime.EndsWith(" UTC"))
-            {
-                return DateTime.ParseExact(dateTime,
-                    "ddd, dd MMM yyyy HH:mm:ss 'UTC'",
-                    CultureInfo.InvariantCulture.DateTimeFormat,
-                    DateTimeStyles.AssumeUniversal);
-            }
-            return DateTime.ParseExact(dateTime,
-                "ddd, dd MMM yyyy HH:mm:ss 'GMT'",
-                CultureInfo.InvariantCulture.DateTimeFormat,
-                DateTimeStyles.AssumeUniversal);
-        }
     }
 
     /// <summary>
