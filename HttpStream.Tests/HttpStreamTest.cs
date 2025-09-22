@@ -46,4 +46,20 @@ public class HttpStreamTest(WebAppFixture webApp) : IClassFixture<WebAppFixture>
         memoryStream.Length.Should().Be(size);
         memoryStream.ToArray().Should().OnlyContain(b => b == 'A');
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TestSeek(bool enableRangeProcessing)
+    {
+        var uri = webApp.GetBytesUri(100, enableRangeProcessing);
+        await using var httpStream = await HttpStream.CreateAsync(uri, cache: new MemoryStream(), ownStream: true, cachePageSize: 32, cached: null);
+
+        httpStream.Seek(40, SeekOrigin.Begin);
+
+        using var memoryStream = new MemoryStream();
+        await httpStream.CopyToAsync(memoryStream);
+        memoryStream.Length.Should().Be(60);
+        memoryStream.ToArray().Should().OnlyContain(b => b == 'A');
+    }
 }

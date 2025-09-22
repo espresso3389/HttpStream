@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Net.Mime;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -25,17 +24,18 @@ public class WebAppFixture : IAsyncLifetime
 
         _webApp = webAppBuilder.Build();
         _webApp.UseResponseCompression();
-        _webApp.MapMethods("/bytes/{size:int}", [HttpMethods.Get, HttpMethods.Head], (int size) => TypedResults.File(Enumerable.Repeat(Convert.ToByte('A'), size).ToArray(), MediaTypeNames.Text.Plain));
+        _webApp.MapMethods("/bytes/{size:int}", [HttpMethods.Get, HttpMethods.Head], (int size, bool enableRangeProcessing = true) => TypedResults.File(Enumerable.Repeat(Convert.ToByte('A'), size).ToArray(), "text/plain; charset=utf-8", enableRangeProcessing: enableRangeProcessing));
     }
 
     /// <summary>
     /// Returns a URI that sends a <c>text/plain</c> response of the character <c>A</c> repeated <paramref name="size"/> times.
     /// </summary>
     /// <param name="size">The size of the response content in bytes.</param>
-    public Uri GetBytesUri(int size)
+    /// <param name="enableRangeProcessing">Whether range processing is enabled or not.</param>
+    public Uri GetBytesUri(int size, bool enableRangeProcessing = true)
     {
         var baseUri = _uri ?? throw new InvalidOperationException($"The URI is only available after {nameof(IAsyncLifetime.InitializeAsync)} has been called");
-        return new Uri(baseUri, $"/bytes/{size}");
+        return new Uri(baseUri, $"/bytes/{size}?enableRangeProcessing={enableRangeProcessing}");
     }
 
     async Task IAsyncLifetime.InitializeAsync()
