@@ -1,0 +1,49 @@
+﻿using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
+using AwesomeAssertions;
+using Espresso3389.HttpStream;
+using Xunit;
+
+namespace HttpStreamTests;
+
+public class HttpStreamTest(WebAppFixture webApp) : IClassFixture<WebAppFixture>
+{
+    [Theory]
+    [InlineData(32 * 1024 - 1)]
+    [InlineData(32 * 1024)] // DefaultCachePageSize
+    [InlineData(32 * 1024 + 1)]
+    public async Task TestSize(int size)
+    {
+        var uri = webApp.GetBytesUri(size);
+        await using var httpStream = await HttpStream.CreateAsync(uri);
+
+        httpStream.IsStreamLengthAvailable.Should().BeTrue();
+        httpStream.Length.Should().Be(size);
+
+        using var memoryStream = new MemoryStream(size);
+        await httpStream.CopyToAsync(memoryStream);
+        memoryStream.Length.Should().Be(size);
+        memoryStream.ToArray().Should().OnlyContain(b => b == 'A');
+    }
+
+    [Theory]
+    [InlineData(DecompressionMethods.None)]
+    [InlineData(DecompressionMethods.All)]
+    public async Task TestDecompressionMethod(DecompressionMethods automaticDecompression)
+    {
+        const int size = 100;
+
+        var uri = webApp.GetBytesUri(size);
+        using var httpClient = new HttpClient(new HttpClientHandler { AutomaticDecompression = automaticDecompression });
+        await using var httpStream = await HttpStream.CreateAsync(uri, cache: new MemoryStream(), ownStream: true, cachePageSize: 32 * 1024, cached: null, httpClient);
+
+        httpStream.IsStreamLengthAvailable.Should().Be(automaticDecompression == DecompressionMethods.None);
+
+        using var memoryStream = new MemoryStream(size);
+        await httpStream.CopyToAsync(memoryStream);
+        memoryStream.Length.Should().Be(size);
+        memoryStream.ToArray().Should().OnlyContain(b => b == 'A');
+    }
+}

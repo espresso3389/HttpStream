@@ -1,15 +1,16 @@
 ﻿using Espresso3389.HttpStream;
 using System;
+using System.Threading.Tasks;
 
 namespace HttpStreamTest
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             try
             {
-                var httpStream = new HttpStream(new Uri(args[0]));
+                var httpStream = await HttpStream.CreateAsync(new Uri(args[0]));
                 var size = (int)httpStream.Length;
                 var first = Math.Min(1024, size);
                 var second = size - first;

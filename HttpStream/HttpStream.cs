@@ -253,7 +253,7 @@ namespace Espresso3389.HttpStream
 
             var s = await res.Content.ReadAsStreamAsync().ConfigureAwait(false);
 
-            int size32 = (int)size;
+            int size32 = size == long.MaxValue ? int.MaxValue : (int)size;
             stream.Position = begin;
             var buf = new byte[BufferingSize];
             var copied = 0;

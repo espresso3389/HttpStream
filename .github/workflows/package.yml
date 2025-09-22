@@ -11,6 +11,10 @@ on:
 
   workflow_dispatch:
 
+env:
+  Configuration: Release
+  ContinuousIntegrationBuild: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,14 +28,21 @@ jobs:
         run: ./scripts/gitrev.sh
 
       - name: Build the assembly
-        run: |
-          cd HttpStream
-          dotnet build --configuration Release HttpStream.csproj -p:ASM_VER=${{ env.ASM_VER }} -p:ASM_COMMIT=${{ env.ASM_COMMIT }} -p:ASM_BUILD_FOR=${{ env.ASM_BUILD_FOR }}
+        run: dotnet build -p:ASM_VER=${{ env.ASM_VER }} -p:ASM_COMMIT=${{ env.ASM_COMMIT }} -p:ASM_BUILD_FOR=${{ env.ASM_BUILD_FOR }}
+
+      - name: Run the tests
+        run: dotnet test
+
+      - name: Generate the test report
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: Test Results
+          path: '*.trx'
+          reporter: dotnet-trx
 
       - name: Create the package
-        run: |
-          cd HttpStream
-          dotnet pack --configuration Release HttpStream.csproj
+        run: dotnet pack
 
       - name: Upload the package as an artifact anyway
         uses: actions/upload-artifact@v4
