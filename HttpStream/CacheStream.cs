@@ -66,7 +66,7 @@ namespace Espresso3389.HttpStream
         {
             if (DispatcherInvoker == null)
             {
-                return func().Result;
+                return func().GetAwaiter().GetResult();
             }
 
             T? ret = default(T);
